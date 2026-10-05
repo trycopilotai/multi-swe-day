@@ -206,11 +206,14 @@ The builder does **not** build first.
    a `response`.
 3. The leader reads the finding through `msd_listen`, then
    either `confirm`s the lanes
-   (`msd_lane_registry confirm --slug <builder-slug>`,
+   (`msd_lane_registry confirm --slug <builder-slug> --propose <PROPOSE envelope id>`,
    `proposed → assigned`), re-routes (release + re-register
    a new lane set, which re-runs this gate), or aborts the
    day (a `release` at this stage: `update --status aborted`
-   is accepted only from `reported`).
+   is accepted only from `reported`). `confirm` without
+   `--propose` is refused (exit 5): the registry records which
+   PROPOSE each confirmed lane set rests on, so a `register`
+   followed straight by `confirm` does not pass.
 4. `confirm` is a **local registry mutation on the leader**;
    the builder cannot see it. The builder's PROPOSE was a
    terminal `response`, which closed that conversation and
@@ -295,8 +298,12 @@ No other role writes ops-repo tracked state.
 Reconciliation merges builder worktree commits into one main
 **locally** and never pushes on its own authority.
 
-1. **Operator gate 1.** Wait for an explicit operator
-   instruction to reconcile.
+1. **Operator gate 1 (`human-review`).** When every lane is
+   `reported`, record the gate
+   (`run-advance --phase human-review --owner human --gate human-review`)
+   and stop. Wait for the operator to clear it
+   (`run-clear-gate human-review`), then
+   `run-advance --phase reconcile --owner agent`.
 2. Merge every builder's reported worktree commit plus the
    leader's own operational commits into one local `main`,
    resolving any lane overlap (rare, since lanes are
@@ -305,13 +312,18 @@ Reconciliation merges builder worktree commits into one main
    build.
 4. Advance each landed lane:
    `msd_lane_registry update --slug <builder-slug> --status landed`.
-5. **Operator gate 2.** Only on a second, separate operator
+   The registry refuses this (exit 5) while any human gate
+   is pending, and until `human-review` has been cleared
+   with `run-clear-gate`.
+5. **Operator gate 2.** Record it
+   (`run-advance --phase land-approval --owner human --gate land-approval`)
+   and stop. Only on a second, separate operator
    instruction does the leader push the deploy. The
    reconcile step itself authorizes no push.
 
 The whole sequence is exact so a verifier can dry-run it:
-merge locally → validate → mark `landed` → stop, with no
-push.
+review gate cleared → merge locally → validate → mark
+`landed` → park at `land-approval` → stop, with no push.
 
 ## 8. Auditor loop
 
@@ -458,7 +470,8 @@ mutation, lock-guarded when `--lock-path` is passed):
 - **when the operator clears review**
   (`run-clear-gate human-review`) →
   `run-advance --phase reconcile --owner agent` (reconcile
-  becomes the offered next item).
+  becomes the offered next item). The registry refuses
+  `update --status landed` until this clear is recorded.
 - **after reconcile** →
   `run-advance --phase land-approval --owner human --gate land-approval`
   (park at the landing gate; no push on the leader's own

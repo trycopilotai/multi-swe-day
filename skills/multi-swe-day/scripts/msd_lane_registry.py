@@ -27,14 +27,14 @@ Schema (one JSON object at the registry path):
     "run": {
       "phase": "<phase>", "next_owner": "human|agent",
       "blocking_gate": "<name>|null", "note": "<s>",
-      "updated_at": "<utc>"
+      "cleared_gates": ["<name>", ...], "updated_at": "<utc>"
     },
     "followers": {
       "<slug>": {
         "role": "builder-NN", "lanes": ["<posix>", ...],
         "day": "DXX", "plan_path": "<path>", "model": "...",
         "effort": "...", "status": "proposed", "commit": null,
-        "updated_at": "<utc>"
+        "propose": "<PROPOSE ref>|null", "updated_at": "<utc>"
       }
     }
   }
@@ -44,6 +44,16 @@ leader advances (`run-advance`) and the operator's gate clears
 (`run-clear-gate`). It is OPTIONAL: a registry written by an older
 schema has no `run` key, and `msd_next.py` derives the phase from lane
 statuses instead — so absence is backward-compatible, not an error.
+`run.cleared_gates` lists the gates `run-clear-gate` has cleared; a
+later `run-advance` keeps it, and one that records a gate again
+removes that gate from it.
+
+Gates the registry enforces:
+  - `confirm` needs `--propose <ref>`, the builder's PROPOSE (the
+    verify-before-implement reply); it is stored as `propose`.
+  - `update --status landed` is refused while `run.blocking_gate` is
+    set, and until `human-review` is in `run.cleared_gates`.
+  Both refusals exit 5, like an illegal transition.
 
 Status transitions:
   proposed -> assigned -> in-progress -> reported -> landed | aborted
@@ -60,7 +70,8 @@ Usage:
       --lock-owner swe-day-leader --session-id <sid>
 
   msd_lane_registry.py --registry handoff/multi-swe-day.json \
-      confirm --slug swe-day-follower-01 --lock-owner swe-day-leader
+      confirm --slug swe-day-follower-01 --propose <propose-id> \
+      --lock-owner swe-day-leader
 
   msd_lane_registry.py --registry handoff/multi-swe-day.json status
   msd_lane_registry.py --registry handoff/multi-swe-day.json \
@@ -138,6 +149,10 @@ STATUS_ORDER = [
     "reported",
 ]
 TERMINAL_STATES = {"landed", "aborted"}
+
+# The human gate that must be cleared (by `run-clear-gate`) before any
+# lane may be marked `landed`: the operator's review of the held diffs.
+REVIEW_GATE = "human-review"
 ALL_STATES = set(STATUS_ORDER) | TERMINAL_STATES
 
 # Allowed status transitions: each linear step forward, plus the two
@@ -427,6 +442,7 @@ def command_register(args: argparse.Namespace) -> int:
         "effort": args.effort,
         "status": "proposed",
         "commit": None,
+        "propose": None,
         "updated_at": utc_now(),
     }
     write_registry(args.registry, registry)
@@ -435,7 +451,11 @@ def command_register(args: argparse.Namespace) -> int:
 
 
 def command_confirm(args: argparse.Namespace) -> int:
-    """Promote a builder's lanes from proposed to assigned."""
+    """Promote a builder's lanes from proposed to assigned.
+
+    Refused (exit 5) without `--propose`: the builder's PROPOSE reply is
+    the verify-before-implement step, and it is recorded on the row.
+    """
     failure = require_lock(args)
     if failure is not None:
         return failure
@@ -459,11 +479,47 @@ def command_confirm(args: argparse.Namespace) -> int:
         )
         return 5
 
+    propose = (args.propose or "").strip()
+    if not propose:
+        print(
+            f"cannot confirm {args.slug!r}: no PROPOSE recorded; run the "
+            "verify-before-implement gate and pass --propose <id of the "
+            "builder's PROPOSE response>",
+            file=sys.stderr,
+        )
+        return 5
+
     record["status"] = "assigned"
+    record["propose"] = propose
     record["updated_at"] = utc_now()
     write_registry(args.registry, registry)
     print(json.dumps(registry, indent=2, sort_keys=True))
     return 0
+
+
+def landing_refusal(registry: dict[str, Any]) -> str | None:
+    """Why no lane may be marked `landed` now, or None when it may.
+
+    A lane lands only after the operator cleared the human-review gate
+    (`run-clear-gate human-review`) and while no human gate is pending.
+    """
+    run = registry.get("run")
+    if not isinstance(run, dict):
+        run = {}
+    pending = run.get("blocking_gate")
+    if pending:
+        return (
+            f"human gate {pending!r} is pending; the operator clears it "
+            f"with `run-clear-gate {pending}`"
+        )
+    if REVIEW_GATE not in (run.get("cleared_gates") or []):
+        return (
+            f"the {REVIEW_GATE!r} gate has not been cleared; record it with "
+            f"`run-advance --phase {REVIEW_GATE} --owner human --gate "
+            f"{REVIEW_GATE}` and have the operator run "
+            f"`run-clear-gate {REVIEW_GATE}`"
+        )
+    return None
 
 
 def command_update(args: argparse.Namespace) -> int:
@@ -500,6 +556,15 @@ def command_update(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 5
+
+    if args.status == "landed":
+        refusal = landing_refusal(registry)
+        if refusal is not None:
+            print(
+                f"cannot mark {args.slug!r} landed: {refusal}",
+                file=sys.stderr,
+            )
+            return 5
 
     record["status"] = args.status
     if args.commit is not None:
@@ -589,11 +654,21 @@ def command_run_advance(args: argparse.Namespace) -> int:
     if registry is None:
         registry = empty_registry(args.lock_owner or "leader")
 
+    # Cleared gates survive a run-advance; recording a gate again makes
+    # it pending again, so it leaves the cleared list.
+    previous = registry.get("run")
+    cleared = []
+    if isinstance(previous, dict):
+        cleared = list(previous.get("cleared_gates") or [])
+    if args.gate in cleared:
+        cleared.remove(args.gate)
+
     registry["run"] = {
         "phase": args.phase,
         "next_owner": args.owner,
         "blocking_gate": args.gate,
         "note": args.note,
+        "cleared_gates": cleared,
         "updated_at": utc_now(),
     }
     write_registry(args.registry, registry)
@@ -634,6 +709,10 @@ def command_run_clear_gate(args: argparse.Namespace) -> int:
         return 5
 
     run["blocking_gate"] = None
+    cleared = list(run.get("cleared_gates") or [])
+    if current not in cleared:
+        cleared.append(current)
+    run["cleared_gates"] = cleared
     run["updated_at"] = utc_now()
     write_registry(args.registry, registry)
     print(json.dumps(registry, indent=2, sort_keys=True))
@@ -688,6 +767,12 @@ def build_parser() -> argparse.ArgumentParser:
     # confirm — proposed -> assigned.
     confirm = subparsers.add_parser("confirm")
     confirm.add_argument("--slug", required=True)
+    confirm.add_argument(
+        "--propose",
+        default=None,
+        help="Id of the builder's PROPOSE response (the verify step); "
+        "required.",
+    )
     confirm.add_argument("--lock-owner")
     confirm.add_argument("--session-id")
     confirm.set_defaults(handler=command_confirm)

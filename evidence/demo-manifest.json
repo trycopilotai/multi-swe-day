@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "date": "2026-10-04",
+  "date": "2026-10-05",
   "skill": {
     "path": "skills/multi-swe-day/SKILL.md",
-    "sha256": "ede33ecc2ef946bdde57138408ab951d31f0c45cf852b6ba7877ecf33a72260d"
+    "sha256": "af6bbe566ae5384b0671242f4527d8083fb162decde8c15deb000a0976f06ad5"
   },
   "programs": [
     {
       "path": "skills/multi-swe-day/scripts/msd_lane_registry.py",
-      "sha256": "cad3cc80ce6f7fdccf865824582819e14dfa3a685d4b798875bd19bd34057f55"
+      "sha256": "6c4df206a056796557ea8af7112e4d36ed8bb64811065cdaca6217cfeb0cb5af"
     },
     {
       "path": "skills/multi-swe-day/scripts/msd_next.py",
@@ -34,7 +34,7 @@
   },
   "output": {
     "path": "evidence/transcripts/registry-session.txt",
-    "sha256": "a9daa93b981347c1edc2eb15c40d859b25e12e492b9d755c3566e3218e123bd9",
+    "sha256": "d29f671b36a457ea1cd9b15ec3352d3433343877116e795b4134e1be92e9c423",
     "edited": false,
     "transforms": [],
     "note": "scripts/record_session.py ran each command in its own bash -c with the first command, the function definition, in front of it; after each command returned it appended that command's line, the command's output, an echo line and an exit status line taken from the command's exit status; everything between is the programs' output, split into lines and joined again with newlines; no line was changed. The recorder refuses to write a transcript that contains the throwaway directory's path or the recording machine's hostname."

@@ -4,7 +4,7 @@ $ reg init --leader leader
   "followers": {},
   "leader": "leader",
   "schema_version": 2,
-  "updated_at": "2026-10-05T04:30:10.885510Z"
+  "updated_at": "2026-10-05T18:24:34.610533Z"
 }
 $ echo "exit status: $?"
 exit status: 0
@@ -20,14 +20,15 @@ $ reg register --slug builder-a --role builder-01 --day D01 --plan-path plans/d0
       ],
       "model": null,
       "plan_path": "plans/d01.md",
+      "propose": null,
       "role": "builder-01",
       "status": "proposed",
-      "updated_at": "2026-10-05T04:30:10.926274Z"
+      "updated_at": "2026-10-05T18:24:34.640435Z"
     }
   },
   "leader": "leader",
   "schema_version": 2,
-  "updated_at": "2026-10-05T04:30:10.926447Z"
+  "updated_at": "2026-10-05T18:24:34.640575Z"
 }
 $ echo "exit status: $?"
 exit status: 0
@@ -47,9 +48,10 @@ $ reg register --slug builder-b --role builder-02 --day D01 --plan-path plans/d0
       ],
       "model": null,
       "plan_path": "plans/d01.md",
+      "propose": null,
       "role": "builder-01",
       "status": "proposed",
-      "updated_at": "2026-10-05T04:30:10.926274Z"
+      "updated_at": "2026-10-05T18:24:34.640435Z"
     },
     "builder-b": {
       "commit": null,
@@ -60,14 +62,15 @@ $ reg register --slug builder-b --role builder-02 --day D01 --plan-path plans/d0
       ],
       "model": null,
       "plan_path": "plans/d01.md",
+      "propose": null,
       "role": "builder-02",
       "status": "proposed",
-      "updated_at": "2026-10-05T04:30:11.003425Z"
+      "updated_at": "2026-10-05T18:24:34.701379Z"
     }
   },
   "leader": "leader",
   "schema_version": 2,
-  "updated_at": "2026-10-05T04:30:11.003731Z"
+  "updated_at": "2026-10-05T18:24:34.701615Z"
 }
 $ echo "exit status: $?"
 exit status: 0

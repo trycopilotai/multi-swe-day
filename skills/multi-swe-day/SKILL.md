@@ -74,6 +74,17 @@ gitchat or swe-day is in none of those places, stop and ask
 the operator where it is installed; do not search the
 filesystem outside the operational repo for it.
 
+**Single session.** With no separate builder chats (one
+session doing the leader's work, perhaps with in-process
+sub-agents as builders), the leader still runs every gate
+through the registry, in the order `references/PROTOCOL.md`
+gives: `register`, the builder's verify finding, `confirm
+--propose <ref>` (a reference to that finding, such as the
+file it is written in), `run-advance` at each phase, and a
+stop at each human gate until the operator clears it with
+`run-clear-gate`. gitchat transport is then not used: no
+`gitchat_send`, server, `msd_listen` or `gitchat_poll`.
+
 The numbered, decision-complete procedure lives in
 `references/PROTOCOL.md`; read it before acting. This file defines the
 roles, the invocation API, and the four bundled scripts.
@@ -152,10 +163,13 @@ python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
   --lane <repo-relative-posix-path> [--lane ...] \
   --lock-owner <owner> --session-id <id>
 
-# confirm a proposed lane set (proposed -> assigned)
+# confirm a proposed lane set (proposed -> assigned) once the
+# builder's PROPOSE has arrived; --propose records its id and is
+# required: without it confirm is refused (exit 5)
 python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
   --registry <path> --lock-path <lock> \
-  confirm --slug <slug> --lock-owner <owner> --session-id <id>
+  confirm --slug <slug> --propose <propose-id> \
+  --lock-owner <owner> --session-id <id>
 
 # advance / record state; release a builder's lanes
 python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
@@ -187,10 +201,24 @@ python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
   `register`, `confirm`, `update`, `release`, `status`,
   `run-advance`, `run-clear-gate`.
 - **Schema:**
-  `{schema_version, updated_at, leader, run:{phase, next_owner, blocking_gate, note, updated_at}, followers:{<slug>:{role, lanes[], day, plan_path, model, effort, status, commit, updated_at}}}`;
+  `{schema_version, updated_at, leader, run:{phase, next_owner, blocking_gate, note, cleared_gates[], updated_at}, followers:{<slug>:{role, lanes[], day, plan_path, model, effort, status, commit, propose, updated_at}}}`;
   `run` is optional.
 - **Status transitions:**
   `proposed → assigned → in-progress → reported → landed | aborted`.
+- **Gates the registry enforces** (each refusal exits 5, like
+  an illegal transition, and changes nothing):
+  - `confirm` without `--propose` is refused. The value is
+    the id of the builder's PROPOSE response, the
+    verify-before-implement step, and is stored as `propose`.
+  - `update --status landed` is refused while
+    `run.blocking_gate` is set, and until the operator's
+    `run-clear-gate human-review` has put `human-review` in
+    `run.cleared_gates`. A registry with no `run` object has
+    not cleared it. A later `run-advance` keeps
+    `cleared_gates`; one that records `--gate human-review`
+    again takes it out.
+  The program cannot tell who runs a command: it checks that
+  the steps were recorded, not that the operator took them.
 - Writes go through a temp file + rename, so one writer's
   write is not torn; two concurrent writers share the temp
   file name and are not protected. Rename does not stop the **wrong**
@@ -268,6 +296,10 @@ agent phase, so record the review gate with `run-advance`
 as the protocol says rather than relying on the derivation.
 When OWNER is `human` the banner adds a line naming the
 unmet gate, and a `note:` line when a note is recorded.
+
+The registry refuses to mark a lane `landed` until the
+`human-review` gate has been recorded and cleared (see
+"Gates the registry enforces" above).
 
 **Never act downstream of an unmet HUMAN gate.** When OWNER
 renders `human` (`plan`, `human-review`, `land-approval`,
@@ -354,7 +386,8 @@ the operator's review — never just print the diff inline.
    conversation) after `confirm`; the builder builds on that
    build-go prompt and reports a terminal `response` to it.
    Two leader→builder prompts per lane: dispatch (verify)
-   then build-go.
+   then build-go. `confirm` requires `--propose <id>`, the
+   PROPOSE it rests on.
 6. **Builders fan out locally** (task-internal sub-agents,
    never a gitchat relay, never recursive, bounded to N
    workers (default N=4)), each sub-agent in its own throwaway
@@ -362,8 +395,10 @@ the operator's review — never just print the diff inline.
    integrator, and adversarially verify before reporting.
 7. **Non-push reconcile → operator-gated deploy.** The
    leader merges all worktree commits into one main
-   **locally**, re-validates, marks `landed`; a **second**
-   operator gate authorizes the deploy push.
+   **locally**, re-validates, marks `landed` (the registry
+   refuses this until the operator has cleared
+   `human-review`); a **second** operator gate authorizes the
+   deploy push.
 8. **Auditor proposes only** — never implements.
 9. **Registry writes only under the held lock**, verified by
    owner/session when `--lock-path` is passed, not just

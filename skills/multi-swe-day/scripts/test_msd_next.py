@@ -75,7 +75,7 @@ class MsdNextTest(unittest.TestCase):
 
     def drive_to_reported(self, slug) -> None:
         """Push one builder all the way to `reported`."""
-        self.reg_cmd(["confirm", "--slug", slug])
+        self.reg_cmd(["confirm", "--slug", slug, "--propose", "p-" + slug])
         self.reg_cmd(["update", "--slug", slug, "--status", "in-progress"])
         self.reg_cmd(["update", "--slug", slug, "--status", "reported"])
 
@@ -107,7 +107,7 @@ class MsdNextTest(unittest.TestCase):
 
     def test_in_progress_lane_is_build(self) -> None:
         self.seed_builder("b1", ["src/a"])
-        self.reg_cmd(["confirm", "--slug", "b1"])
+        self.reg_cmd(["confirm", "--slug", "b1", "--propose", "p-b1"])
         self.reg_cmd(["update", "--slug", "b1", "--status", "in-progress"])
         resolved = self.resolve()
         self.assertEqual(resolved["phase"], "build")
@@ -126,7 +126,14 @@ class MsdNextTest(unittest.TestCase):
     def test_all_landed_is_done(self) -> None:
         self.seed_builder("b1", ["src/a"])
         self.drive_to_reported("b1")
-        self.reg_cmd(["update", "--slug", "b1", "--status", "landed"])
+        # The registry lands a lane only after the review gate, which
+        # records a run phase; write the status directly so this test
+        # still covers the derivation with no `run` object.
+        with open(self.registry, encoding="utf-8") as handle:
+            data = json.load(handle)
+        data["followers"]["b1"]["status"] = "landed"
+        with open(self.registry, "w", encoding="utf-8") as handle:
+            json.dump(data, handle)
         resolved = self.resolve()
         self.assertEqual(resolved["phase"], "done")
 

@@ -68,6 +68,21 @@ class LaneRegistryTest(unittest.TestCase):
         kwargs.update(extra)
         return self.run_cmd(self.base_args("register", **kwargs))
 
+    def clear_review(self) -> None:
+        """Record the human-review gate, clear it, advance to reconcile."""
+        self.run_cmd(
+            self.base_args(
+                "run-advance", phase="human-review", owner="human",
+                gate="human-review",
+            )
+        )
+        self.run_cmd(
+            ["--registry", self.registry, "run-clear-gate", "human-review"]
+        )
+        self.run_cmd(
+            self.base_args("run-advance", phase="reconcile", owner="agent")
+        )
+
     # ---- clean register --------------------------------------------
 
     def test_clean_register(self) -> None:
@@ -143,7 +158,7 @@ class LaneRegistryTest(unittest.TestCase):
         self.seed_builder("b1", "builder-01", ["src/x"])
         # confirm: proposed -> assigned
         self.assertEqual(
-            self.run_cmd(self.base_args("confirm", slug="b1")), 0
+            self.run_cmd(self.base_args("confirm", slug="b1", propose="p1")), 0
         )
         self.assertEqual(
             reg.read_registry(self.registry)["followers"]["b1"]["status"],
@@ -164,6 +179,7 @@ class LaneRegistryTest(unittest.TestCase):
             ),
             0,
         )
+        self.clear_review()
         self.assertEqual(
             self.run_cmd(
                 self.base_args("update", slug="b1", status="landed")
@@ -204,7 +220,7 @@ class LaneRegistryTest(unittest.TestCase):
 
     def test_reported_can_abort(self) -> None:
         self.seed_builder("b1", "builder-01", ["src/x"])
-        self.run_cmd(self.base_args("confirm", slug="b1"))
+        self.run_cmd(self.base_args("confirm", slug="b1", propose="p1"))
         self.run_cmd(
             self.base_args("update", slug="b1", status="in-progress")
         )
@@ -236,7 +252,7 @@ class LaneRegistryTest(unittest.TestCase):
         # Drive b1 to `aborted`, then a different slug must be able to
         # register the same lane without an explicit release.
         self.seed_builder("b1", "builder-01", ["src/abandoned"])
-        self.run_cmd(self.base_args("confirm", slug="b1"))
+        self.run_cmd(self.base_args("confirm", slug="b1", propose="p1"))
         self.run_cmd(
             self.base_args("update", slug="b1", status="in-progress")
         )
@@ -254,17 +270,107 @@ class LaneRegistryTest(unittest.TestCase):
             self.seed_builder("b2", "builder-02", ["src/abandoned"]), 0
         )
         # A `landed` lane, by contrast, still blocks.
-        self.run_cmd(self.base_args("confirm", slug="b2"))
+        self.run_cmd(self.base_args("confirm", slug="b2", propose="p2"))
         self.run_cmd(
             self.base_args("update", slug="b2", status="in-progress")
         )
         self.run_cmd(
             self.base_args("update", slug="b2", status="reported")
         )
-        self.run_cmd(self.base_args("update", slug="b2", status="landed"))
+        self.clear_review()
+        self.assertEqual(
+            self.run_cmd(self.base_args("update", slug="b2", status="landed")),
+            0,
+        )
         self.assertEqual(
             self.seed_builder("b3", "builder-03", ["src/abandoned"]), 4
         )
+
+    # ---- gates the registry enforces -------------------------------
+
+    def drive_to_reported(self, slug) -> None:
+        """Take one registered builder through confirm to `reported`."""
+        self.run_cmd(self.base_args("confirm", slug=slug, propose="p-" + slug))
+        self.run_cmd(self.base_args("update", slug=slug, status="in-progress"))
+        self.run_cmd(self.base_args("update", slug=slug, status="reported"))
+
+    def status_of(self, slug) -> str:
+        return reg.read_registry(self.registry)["followers"][slug]["status"]
+
+    def test_confirm_without_propose_is_refused(self) -> None:
+        # register straight to confirm skips the verify step.
+        self.seed_builder("b1", "builder-01", ["src/x"])
+        self.assertEqual(self.run_cmd(self.base_args("confirm", slug="b1")), 5)
+        self.assertEqual(self.status_of("b1"), "proposed")
+        code = self.run_cmd(
+            self.base_args("confirm", slug="b1", propose="msg-0001")
+        )
+        self.assertEqual(code, 0)
+        record = reg.read_registry(self.registry)["followers"]["b1"]
+        self.assertEqual(record["status"], "assigned")
+        self.assertEqual(record["propose"], "msg-0001")
+
+    def test_landed_refused_when_review_never_recorded(self) -> None:
+        self.seed_builder("b1", "builder-01", ["src/x"])
+        self.drive_to_reported("b1")
+        code = self.run_cmd(self.base_args("update", slug="b1", status="landed"))
+        self.assertEqual(code, 5)
+        self.assertEqual(self.status_of("b1"), "reported")
+
+    def test_landed_refused_while_review_gate_pending(self) -> None:
+        self.seed_builder("b1", "builder-01", ["src/x"])
+        self.drive_to_reported("b1")
+        self.run_cmd(
+            self.base_args(
+                "run-advance", phase="human-review", owner="human",
+                gate="human-review",
+            )
+        )
+        code = self.run_cmd(self.base_args("update", slug="b1", status="landed"))
+        self.assertEqual(code, 5)
+        # Advancing past the gate without clearing it does not help.
+        self.run_cmd(self.base_args("run-advance", phase="reconcile", owner="agent"))
+        code = self.run_cmd(self.base_args("update", slug="b1", status="landed"))
+        self.assertEqual(code, 5)
+        self.assertEqual(self.status_of("b1"), "reported")
+
+    def test_landed_allowed_after_review_cleared(self) -> None:
+        self.seed_builder("b1", "builder-01", ["src/x"])
+        self.seed_builder("b2", "builder-02", ["src/y"])
+        self.drive_to_reported("b1")
+        self.drive_to_reported("b2")
+        self.clear_review()
+        run = reg.read_registry(self.registry)["run"]
+        self.assertEqual(run["cleared_gates"], ["human-review"])
+        code = self.run_cmd(self.base_args("update", slug="b1", status="landed"))
+        self.assertEqual(code, 0)
+        # Any other pending human gate blocks landing too.
+        self.run_cmd(
+            self.base_args(
+                "run-advance", phase="land-approval", owner="human",
+                gate="land-approval",
+            )
+        )
+        code = self.run_cmd(self.base_args("update", slug="b2", status="landed"))
+        self.assertEqual(code, 5)
+        self.assertEqual(self.status_of("b2"), "reported")
+
+    def test_recording_review_again_makes_it_pending(self) -> None:
+        self.seed_builder("b1", "builder-01", ["src/x"])
+        self.drive_to_reported("b1")
+        self.clear_review()
+        self.run_cmd(
+            self.base_args(
+                "run-advance", phase="human-review", owner="human",
+                gate="human-review",
+            )
+        )
+        self.assertEqual(
+            reg.read_registry(self.registry)["run"]["cleared_gates"], []
+        )
+        self.run_cmd(self.base_args("run-advance", phase="reconcile", owner="agent"))
+        code = self.run_cmd(self.base_args("update", slug="b1", status="landed"))
+        self.assertEqual(code, 5)
 
     # ---- lock-owner enforcement ------------------------------------
 

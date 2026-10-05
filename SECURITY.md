@@ -35,7 +35,11 @@ private channel.
   valid report. So is a call with a non-empty `--lock-path`
   that changes the registry while stating an owner other
   than the one in the metadata, or a session id other than a
-  non-empty one the metadata records.
+  non-empty one the metadata records. So is a `confirm`
+  it accepts with no `--propose` value, or an
+  `update --status landed` it accepts while `run.blocking_gate`
+  is set or before `run-clear-gate human-review` was
+  recorded.
 - **The listener.** `skills/multi-swe-day/scripts/msd_listen.py`
   runs `git fetch`, `git for-each-ref`, `git ls-tree` and
   `git show` in `--repo`, prints envelopes as JSON lines, and
@@ -134,15 +138,21 @@ can fail.
 
 ### Human gates and the banner
 
-- **Human gates are text.** `run-advance` records whatever
-  phase, owner, gate and note the caller passes, replacing
-  the previous run object, a pending gate included. It does
-  not require that an earlier gate was cleared.
-  `run-clear-gate` clears only a gate that `run-advance`
-  recorded; it refuses when the banner merely derived a
-  human phase. The program cannot tell an operator from an
-  agent; the skill text is what tells an agent to stop at a
-  gate.
+- **Human gates are recorded steps, not identities.**
+  `run-advance` records whatever phase, owner, gate and note
+  the caller passes, replacing the previous run object, a
+  pending gate included; only the list of cleared gates is
+  carried over. It does not require that an earlier gate was
+  cleared. `run-clear-gate` clears only a gate that
+  `run-advance` recorded; it refuses when the banner merely
+  derived a human phase. The registry refuses
+  `update --status landed` while a gate is pending or until
+  `human-review` has been cleared, and refuses `confirm`
+  without `--propose`, but `--propose` is any non-empty
+  string and the program cannot tell an operator from an
+  agent: whoever holds the lock can run `run-clear-gate`.
+  No program gates the push; the skill text is what tells
+  an agent to stop at `land-approval` and `push`.
 - **`--owner` is stored, not used.** The banner takes OWNER
   from its own phase model and from a recorded blocking
   gate. `run-advance --phase build --owner human` renders

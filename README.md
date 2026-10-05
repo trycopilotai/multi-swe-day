@@ -50,7 +50,12 @@ registry does and does not check.
 - Whether agents that follow `SKILL.md` keep to their lanes,
   stop at each human gate, or leave pushing to the operator
   has not been measured. The registry records lanes; no
-  program checks which files a builder edits.
+  program checks which files a builder edits. The registry
+  refuses `confirm` without a recorded PROPOSE and refuses
+  to mark a lane `landed` until the `human-review` gate has
+  been recorded and cleared, but it cannot tell whether the
+  operator or an agent ran `run-clear-gate`, and no program
+  stops a push.
 - The recorded session passes no `--lock-path`, so the
   registry's lock check does not run in it.
 - No test or recording here runs the programs against a
@@ -166,7 +171,7 @@ fails.
 
 ```sh
 set -eu
-release=v0.1.1
+release=v0.1.2
 install_target="$HOME/.claude/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
@@ -203,7 +208,7 @@ the block above is `install_target`.
 
 ```sh
 set -eu
-release=v0.1.1
+release=v0.1.2
 install_target="$HOME/.agents/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
