@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-04",
+  "skill": {
+    "path": "skills/multi-swe-day/SKILL.md",
+    "sha256": "3b28043b181d0457573d6bea4c8fe06261f88a4d4f406f1cf880645f98219c64"
+  },
+  "programs": [
+    {
+      "path": "skills/multi-swe-day/scripts/msd_lane_registry.py",
+      "sha256": "cad3cc80ce6f7fdccf865824582819e14dfa3a685d4b798875bd19bd34057f55"
+    },
+    {
+      "path": "skills/multi-swe-day/scripts/msd_next.py",
+      "sha256": "cc59d4f52a95a197f66e41cbedd410882f4e823d1f665f65ea9f6c32dfdf858b"
+    }
+  ],
+  "agent": {
+    "invoked_the_skill": false,
+    "note": "No agent session ran a multi-swe-day network to produce this evidence. The two programs were run directly from a shell while this release was being prepared."
+  },
+  "invocation": {
+    "commands": [
+      "reg() { python3 skills/multi-swe-day/scripts/msd_lane_registry.py --registry run/registry.json \"$@\"; }",
+      "reg init --leader leader",
+      "reg register --slug builder-a --role builder-01 --day D01 --plan-path plans/d01.md --lane src/auth",
+      "reg register --slug builder-b --role builder-02 --day D01 --plan-path plans/d01.md --lane src",
+      "reg register --slug builder-b --role builder-02 --day D01 --plan-path plans/d01.md --lane src/billing",
+      "python3 skills/multi-swe-day/scripts/msd_next.py --registry run/registry.json render"
+    ],
+    "interpreter": "Python 3.13.13",
+    "working_directory": "a throwaway directory holding a copy of skills/ and nothing else",
+    "lock_check": "No command passes --lock-path, so the registry's lock check does not run in this session."
+  },
+  "output": {
+    "path": "evidence/transcripts/registry-session.txt",
+    "sha256": "a9daa93b981347c1edc2eb15c40d859b25e12e492b9d755c3566e3218e123bd9",
+    "edited": false,
+    "transforms": [],
+    "note": "scripts/record_session.py ran each command in its own bash -c with the first command, the function definition, in front of it; after each command returned it appended that command's line, the command's output, an echo line and an exit status line taken from the command's exit status; everything between is the programs' output, split into lines and joined again with newlines; no line was changed. The recorder refuses to write a transcript that contains the throwaway directory's path or the recording machine's hostname."
+  }
+}

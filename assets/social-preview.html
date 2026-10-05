@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>multi-swe-day</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 1280px;
+        height: 640px;
+        background: #101418;
+      }
+      body {
+        box-sizing: border-box;
+        padding: 72px 80px;
+        color: #f7fbff;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .name {
+        font-size: 44px;
+        font-weight: 600;
+        letter-spacing: -0.5px;
+      }
+      .line {
+        margin-top: 36px;
+        font-size: 30px;
+        line-height: 1.4;
+        color: #a7bac5;
+      }
+      .evidence {
+        margin-top: 44px;
+        font-size: 24px;
+        line-height: 1.6;
+      }
+      .refused {
+        color: #ffd166;
+      }
+      .foot {
+        position: absolute;
+        left: 80px;
+        bottom: 56px;
+        font-size: 22px;
+        color: #a7bac5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="name">multi-swe-day</div>
+    <div class="line">
+      The lane registry refuses overlapping lanes.
+    </div>
+    <div class="evidence">
+      <div class="refused">
+        lane conflict: 'src' overlaps 'src/auth' held by
+        'builder-a'
+      </div>
+      <div class="refused">exit status: 4</div>
+    </div>
+    <div class="foot">trycopilot.ai · agent skill · MIT</div>
+  </body>
+</html>

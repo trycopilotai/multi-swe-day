@@ -1,0 +1,78 @@
+$ reg() { python3 skills/multi-swe-day/scripts/msd_lane_registry.py --registry run/registry.json "$@"; }
+$ reg init --leader leader
+{
+  "followers": {},
+  "leader": "leader",
+  "schema_version": 2,
+  "updated_at": "2026-10-05T04:30:10.885510Z"
+}
+$ echo "exit status: $?"
+exit status: 0
+$ reg register --slug builder-a --role builder-01 --day D01 --plan-path plans/d01.md --lane src/auth
+{
+  "followers": {
+    "builder-a": {
+      "commit": null,
+      "day": "D01",
+      "effort": null,
+      "lanes": [
+        "src/auth"
+      ],
+      "model": null,
+      "plan_path": "plans/d01.md",
+      "role": "builder-01",
+      "status": "proposed",
+      "updated_at": "2026-10-05T04:30:10.926274Z"
+    }
+  },
+  "leader": "leader",
+  "schema_version": 2,
+  "updated_at": "2026-10-05T04:30:10.926447Z"
+}
+$ echo "exit status: $?"
+exit status: 0
+$ reg register --slug builder-b --role builder-02 --day D01 --plan-path plans/d01.md --lane src
+lane conflict: 'src' overlaps 'src/auth' held by 'builder-a'
+$ echo "exit status: $?"
+exit status: 4
+$ reg register --slug builder-b --role builder-02 --day D01 --plan-path plans/d01.md --lane src/billing
+{
+  "followers": {
+    "builder-a": {
+      "commit": null,
+      "day": "D01",
+      "effort": null,
+      "lanes": [
+        "src/auth"
+      ],
+      "model": null,
+      "plan_path": "plans/d01.md",
+      "role": "builder-01",
+      "status": "proposed",
+      "updated_at": "2026-10-05T04:30:10.926274Z"
+    },
+    "builder-b": {
+      "commit": null,
+      "day": "D01",
+      "effort": null,
+      "lanes": [
+        "src/billing"
+      ],
+      "model": null,
+      "plan_path": "plans/d01.md",
+      "role": "builder-02",
+      "status": "proposed",
+      "updated_at": "2026-10-05T04:30:11.003425Z"
+    }
+  },
+  "leader": "leader",
+  "schema_version": 2,
+  "updated_at": "2026-10-05T04:30:11.003731Z"
+}
+$ echo "exit status: $?"
+exit status: 0
+$ python3 skills/multi-swe-day/scripts/msd_next.py --registry run/registry.json render
+▶ multi-swe-day ACTIVE · phase dispatch+verify · NEXT: leader dispatches lanes; builders verify before build · OWNER: agent · BLOCKED-ON: —
+  next: leader dispatches lanes; builders verify before build
+$ echo "exit status: $?"
+exit status: 0

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title description">
+  <title id="title">multi-swe-day registry session</title>
+  <desc id="description">A terminal creates a lane registry, registers src/auth for one builder, is refused src for a second builder with exit status 4, registers src/billing for that builder, and prints the first line of the next-action banner.</desc>
+  <rect width="1280" height="720" rx="24" fill="#101418" />
+  <circle cx="40" cy="44" r="9" fill="#ff6b6b" />
+  <circle cx="70" cy="44" r="9" fill="#ffd166" />
+  <circle cx="100" cy="44" r="9" fill="#55d6be" />
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">
+    <text x="40" y="108" fill="#f7fbff" xml:space="preserve">$ reg() { python3 skills/multi-swe-day/scripts/msd_lane_registry.py --registry run/registry.json &quot;$@&quot;; }</text>
+    <g class="step-1">
+      <text x="40" y="148" fill="#f7fbff" xml:space="preserve">$ reg init --leader leader</text>
+      <text x="40" y="174" fill="#55d6be" xml:space="preserve">exit status: 0</text>
+    </g>
+    <g class="step-2">
+      <text x="40" y="214" fill="#f7fbff" xml:space="preserve">$ reg register --slug builder-a --role builder-01 --day D01 --plan-path plans/d01.md --lane src/auth</text>
+      <text x="40" y="240" fill="#55d6be" xml:space="preserve">exit status: 0</text>
+    </g>
+    <g class="step-3">
+      <text x="40" y="280" fill="#f7fbff" xml:space="preserve">$ reg register --slug builder-b --role builder-02 --day D01 --plan-path plans/d01.md --lane src</text>
+      <text x="40" y="306" fill="#ffd166" xml:space="preserve">lane conflict: &#x27;src&#x27; overlaps &#x27;src/auth&#x27; held by &#x27;builder-a&#x27;</text>
+      <text x="40" y="332" fill="#ffd166" xml:space="preserve">exit status: 4</text>
+    </g>
+    <g class="step-4">
+      <text x="40" y="372" fill="#f7fbff" xml:space="preserve">$ reg register --slug builder-b --role builder-02 --day D01 --plan-path plans/d01.md --lane src/billing</text>
+      <text x="40" y="398" fill="#55d6be" xml:space="preserve">exit status: 0</text>
+    </g>
+    <g class="step-5">
+      <text x="40" y="438" fill="#f7fbff" xml:space="preserve">$ python3 skills/multi-swe-day/scripts/msd_next.py --registry run/registry.json render</text>
+      <text x="40" y="464" fill="#f7fbff" xml:space="preserve">▶ multi-swe-day ACTIVE · phase dispatch+verify · NEXT: leader dispatches lanes; builders verify before build · OWNER: agent · BLOCKED-ON: —</text>
+      <text x="40" y="490" fill="#55d6be" xml:space="preserve">exit status: 0</text>
+    </g>
+  </g>
+  <text x="40" y="692" fill="#a7bac5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">Reconstructed from evidence/transcripts/registry-session.txt</text>
+</svg>
