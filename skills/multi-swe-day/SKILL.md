@@ -474,8 +474,8 @@ reads this file first and binds the host specifics:
   explicitly — the `swe_day_lock.py` default
   `.agents/locks/swe-day.lock` may differ from a host
   wrapper's path; confirm via
-  `<swe-day-skill-dir>/scripts/swe_day_lock.py --repo <repo>
-  --lock-path <lock> status`),
+  `python3 <swe-day-skill-dir>/scripts/swe_day_lock.py
+  --repo <repo> --lock-path <lock> status`),
 - the gitchat scripts and remote,
 - which l8 wrapper the auditor reads.
 
