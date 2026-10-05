@@ -51,7 +51,8 @@ registry does and does not check.
   stop at each human gate, or leave pushing to the operator
   has not been measured. The registry records lanes; no
   program checks which files a builder edits. The registry
-  refuses `confirm` without a recorded PROPOSE and refuses
+  refuses `confirm` without a `--propose` value (any
+  non-empty string; it does not look the PROPOSE up) and refuses
   to mark a lane `landed` until the `human-review` gate has
   been recorded and cleared, but it cannot tell whether the
   operator or an agent ran `run-clear-gate`, and no program
@@ -66,11 +67,13 @@ registry does and does not check.
 
 ## It needs gitchat and swe-day
 
-multi-swe-day is composition, and it does not work alone.
+multi-swe-day is composition. A run across several chats
+needs both; a single session (the "Single session" note in
+`SKILL.md`) needs only the swe-day lock.
 
-- **gitchat is required.** Every message between the roles
-  is a gitchat envelope, and `msd_listen.py` reads gitchat's
-  outbox branches. The skill text names gitchat's
+- **gitchat is required across chats.** Every message
+  between chats is a gitchat envelope, and `msd_listen.py`
+  reads gitchat's outbox branches. The skill text names gitchat's
   `gitchat_send.py` and `gitchat_poll.py`. gitchat is the
   sibling repository `trycopilotai/gitchat`. Read its own
   security notes before you give anyone push access to the
@@ -171,7 +174,7 @@ fails.
 
 ```sh
 set -eu
-release=v0.1.2
+release=v0.1.3
 install_target="$HOME/.claude/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
@@ -208,7 +211,7 @@ the block above is `install_target`.
 
 ```sh
 set -eu
-release=v0.1.2
+release=v0.1.3
 install_target="$HOME/.agents/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"

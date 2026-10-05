@@ -34,7 +34,7 @@ Schema (one JSON object at the registry path):
         "role": "builder-NN", "lanes": ["<posix>", ...],
         "day": "DXX", "plan_path": "<path>", "model": "...",
         "effort": "...", "status": "proposed", "commit": null,
-        "propose": "<PROPOSE ref>|null", "updated_at": "<utc>"
+        "propose": "<propose-ref>|null", "updated_at": "<utc>"
       }
     }
   }
@@ -49,8 +49,10 @@ later `run-advance` keeps it, and one that records a gate again
 removes that gate from it.
 
 Gates the registry enforces:
-  - `confirm` needs `--propose <ref>`, the builder's PROPOSE (the
-    verify-before-implement reply); it is stored as `propose`.
+  - `confirm` needs `--propose <propose-ref>`, the PROPOSE reference:
+    the envelope id of the builder's PROPOSE (the verify-before-implement
+    reply), or in a single session the path of the file holding the
+    finding. Any non-empty string is accepted; it is stored as `propose`.
   - `update --status landed` is refused while `run.blocking_gate` is
     set, and until `human-review` is in `run.cleared_gates`.
   Both refusals exit 5, like an illegal transition.
@@ -63,6 +65,11 @@ step and enforces the rest.)
 Usage:
   msd_lane_registry.py --registry handoff/multi-swe-day.json \
       --lock-path .agents/locks/ops-repo.swe-day.lock \
+      init --leader swe-day-leader \
+      --lock-owner swe-day-leader --session-id <sid>
+
+  msd_lane_registry.py --registry handoff/multi-swe-day.json \
+      --lock-path .agents/locks/ops-repo.swe-day.lock \
       register --slug swe-day-follower-01 --role builder-01 \
       --day D42 --plan-path plans/d42.plan.md \
       --model <model-id> --effort <effort> \
@@ -70,30 +77,36 @@ Usage:
       --lock-owner swe-day-leader --session-id <sid>
 
   msd_lane_registry.py --registry handoff/multi-swe-day.json \
-      confirm --slug swe-day-follower-01 --propose <propose-id> \
-      --lock-owner swe-day-leader
+      --lock-path .agents/locks/ops-repo.swe-day.lock \
+      confirm --slug swe-day-follower-01 --propose <propose-ref> \
+      --lock-owner swe-day-leader --session-id <sid>
 
   msd_lane_registry.py --registry handoff/multi-swe-day.json status
   msd_lane_registry.py --registry handoff/multi-swe-day.json \
       status --slug swe-day-follower-01
 
   msd_lane_registry.py --registry handoff/multi-swe-day.json \
+      --lock-path .agents/locks/ops-repo.swe-day.lock \
       update --slug swe-day-follower-01 --status in-progress \
-      [--commit <sha>] --lock-owner swe-day-leader
+      [--commit <sha>] --lock-owner swe-day-leader --session-id <sid>
 
   msd_lane_registry.py --registry handoff/multi-swe-day.json \
-      release --slug swe-day-follower-01 --lock-owner swe-day-leader
+      --lock-path .agents/locks/ops-repo.swe-day.lock \
+      release --slug swe-day-follower-01 \
+      --lock-owner swe-day-leader --session-id <sid>
 
   msd_lane_registry.py --registry handoff/multi-swe-day.json \
-      init --leader swe-day-leader --lock-owner swe-day-leader
-
-  msd_lane_registry.py --registry handoff/multi-swe-day.json \
+      --lock-path .agents/locks/ops-repo.swe-day.lock \
       run-advance --phase reconcile --owner agent \
       --note "all lanes reported; review cleared" \
-      --lock-owner swe-day-leader
+      --lock-owner swe-day-leader --session-id <sid>
 
   msd_lane_registry.py --registry handoff/multi-swe-day.json \
-      run-clear-gate human-review --lock-owner swe-day-leader
+      --lock-path .agents/locks/ops-repo.swe-day.lock \
+      run-clear-gate human-review \
+      --lock-owner swe-day-leader --session-id <sid>
+
+Without --lock-path a mutation is not lock-guarded.
 
 On a mutation it prints the updated registry JSON. On a lane conflict
 it prints the conflicting slug + lanes to stderr and exits non-zero.
@@ -483,8 +496,8 @@ def command_confirm(args: argparse.Namespace) -> int:
     if not propose:
         print(
             f"cannot confirm {args.slug!r}: no PROPOSE recorded; run the "
-            "verify-before-implement gate and pass --propose <id of the "
-            "builder's PROPOSE response>",
+            "verify-before-implement gate and pass --propose <propose-ref> "
+            "(the PROPOSE reference)",
             file=sys.stderr,
         )
         return 5
@@ -770,8 +783,9 @@ def build_parser() -> argparse.ArgumentParser:
     confirm.add_argument(
         "--propose",
         default=None,
-        help="Id of the builder's PROPOSE response (the verify step); "
-        "required.",
+        help="The PROPOSE reference: the envelope id of the builder's "
+        "PROPOSE response (the verify step), or the path of the file "
+        "holding the finding; required.",
     )
     confirm.add_argument("--lock-owner")
     confirm.add_argument("--session-id")

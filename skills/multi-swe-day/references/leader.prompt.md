@@ -70,8 +70,9 @@ as prompt fields. Require the verify-before-implement gate:
 a builder must check the work against `origin/main` and its
 siblings and reply with a PROPOSE terminal response before
 it builds; you confirm, re-route, or abort, and only then
-does it build. When you confirm, pass the id of the
-builder's PROPOSE response; the registry script refuses a
+does it build. When you confirm, pass the PROPOSE reference
+(`--propose <propose-ref>`, the envelope id of the builder's
+PROPOSE response); the registry script refuses a
 confirm without one. When a builder reports a private-repo
 payload, you write it under the lock and mark the lane
 reported. Reconcile lands non-push and locally only, behind

@@ -642,6 +642,61 @@ class LaneRegistryTest(unittest.TestCase):
         )
         self.assertEqual(code, 0)
 
+    # ---- the single-session sequence in SKILL.md --------------------
+
+    def test_single_session_sequence_runs_under_the_lock(self) -> None:
+        # The ordered steps SKILL.md's "Single session" note gives, each
+        # lock-checked; the opening plan gate has no clear to run.
+        lock_path = self._make_lock("leader", session_id="s1")
+        registry = os.path.join(self.tmp, "single", "msd.json")
+        proof = ["--lock-owner", "leader", "--session-id", "s1"]
+
+        def run(*argv: str) -> int:
+            return self.run_cmd(
+                ["--registry", registry, "--lock-path", lock_path,
+                 *argv, *proof]
+            )
+
+        steps = [
+            ("init", "--leader", "leader"),
+            ("register", "--slug", "b1", "--role", "builder-01",
+             "--day", "D01", "--plan-path", "plans/d01.md",
+             "--lane", "src/auth"),
+            ("confirm", "--slug", "b1", "--propose", "run/b1.propose.md"),
+            ("run-advance", "--phase", "build", "--owner", "agent"),
+            ("update", "--slug", "b1", "--status", "in-progress"),
+            ("update", "--slug", "b1", "--status", "reported"),
+            ("run-advance", "--phase", "human-review", "--owner",
+             "human", "--gate", "human-review"),
+        ]
+        for step in steps:
+            self.assertEqual(run(*step), 0, step)
+        self.assertEqual(run("run-clear-gate", "plan"), 5)
+        self.assertEqual(
+            run("update", "--slug", "b1", "--status", "landed"), 5
+        )
+        for step in [
+            ("run-clear-gate", "human-review"),
+            ("run-advance", "--phase", "reconcile", "--owner", "agent"),
+            ("update", "--slug", "b1", "--status", "landed"),
+            ("run-advance", "--phase", "land-approval", "--owner",
+             "human", "--gate", "land-approval"),
+        ]:
+            self.assertEqual(run(*step), 0, step)
+        run_state = reg.read_registry(registry)["run"]
+        self.assertEqual(run_state["blocking_gate"], "land-approval")
+
+    def test_usage_shows_lock_path_on_every_mutation(self) -> None:
+        usage = reg.__doc__.split("Usage:\n", 1)[1].split("\nOn a ", 1)[0]
+        examples = [block for block in usage.split("\n\n") if block.strip()]
+        mutations = [b for b in examples if " status" not in b
+                     and "msd_lane_registry.py" in b]
+        self.assertGreaterEqual(len(mutations), 7)
+        for block in mutations:
+            self.assertIn("--lock-path", block)
+            self.assertIn("--lock-owner", block)
+            self.assertIn("--session-id", block)
+
     # ---- atomic write ----------------------------------------------
 
     def test_atomic_write_no_tmp_left(self) -> None:

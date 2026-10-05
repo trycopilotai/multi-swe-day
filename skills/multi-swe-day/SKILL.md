@@ -39,6 +39,8 @@ skill:
   transport (send / server / inbox / tail) over git
   branches. Its scripts, such as `gitchat_send.py` and
   `gitchat_poll.py`, are in `<gitchat-skill-dir>/scripts/`.
+  Needed for a run across chats, not in a single session
+  (below).
 - **swe_day_lock.py** (`github.com/trycopilotai/swe-day`) — the
   single-writer mutation lock for the operational repo, at
   `<swe-day-skill-dir>/scripts/swe_day_lock.py`.
@@ -70,20 +72,46 @@ directory, so a bare `scripts/...` path does not resolve.
   repo's `.agents/skills/<name>/`.
 
 `<name>` is `multi-swe-day`, `gitchat` or `swe-day`. If
-gitchat or swe-day is in none of those places, stop and ask
-the operator where it is installed; do not search the
-filesystem outside the operational repo for it.
+swe-day, or gitchat for a run across chats, is in none of
+those places, stop and ask the operator where it is
+installed; do not search the filesystem outside the
+operational repo for it.
 
 **Single session.** With no separate builder chats (one
 session doing the leader's work, perhaps with in-process
-sub-agents as builders), the leader still runs every gate
-through the registry, in the order `references/PROTOCOL.md`
-gives: `register`, the builder's verify finding, `confirm
---propose <ref>` (a reference to that finding, such as the
-file it is written in), `run-advance` at each phase, and a
-stop at each human gate until the operator clears it with
-`run-clear-gate`. gitchat transport is then not used: no
-`gitchat_send`, server, `msd_listen` or `gitchat_poll`.
+sub-agents as builders), gitchat is not used (no
+`gitchat_send`, server, `msd_listen` or `gitchat_poll`), but
+the swe-day lock and the registry are. Every registry
+command below takes `--registry <path> --lock-path <lock>`
+before the subcommand and `--lock-owner <owner> --session-id
+<id>` after it, as in "Lane registry" below. In order:
+
+1. The operator approves the plan. No command records that;
+   the approval is the instruction to go on.
+2. Acquire the lock (`swe_day_lock.py ... acquire`), then
+   `init --leader <slug>`.
+3. `register` each builder's lanes.
+4. Each builder sub-agent checks its lanes and writes its
+   finding to a file; `confirm --slug <slug> --propose
+   <propose-ref>` with that file's path.
+5. `run-advance --phase build --owner agent`; then
+   `update --status in-progress` and, when its work is
+   done, `update --status reported` for each builder.
+6. `run-advance --phase human-review --owner human --gate
+   human-review`, and stop. The operator clears it:
+   `run-clear-gate human-review`, with the leader's
+   `--lock-owner` and `--session-id`.
+7. `run-advance --phase reconcile --owner agent`; merge
+   locally, re-validate, then `update --status landed` for
+   each builder.
+8. `run-advance --phase land-approval --owner human --gate
+   land-approval`, and stop. The push waits for a separate
+   operator instruction.
+
+`run-clear-gate` accepts only the gate the last
+`run-advance --gate` recorded (exit 5 otherwise), so there
+is no `run-clear-gate plan`. These are the only
+`run-advance` calls.
 
 The numbered, decision-complete procedure lives in
 `references/PROTOCOL.md`; read it before acting. This file defines the
@@ -164,11 +192,11 @@ python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
   --lock-owner <owner> --session-id <id>
 
 # confirm a proposed lane set (proposed -> assigned) once the
-# builder's PROPOSE has arrived; --propose records its id and is
-# required: without it confirm is refused (exit 5)
+# builder's PROPOSE has arrived; --propose records the PROPOSE
+# reference and is required: without it confirm is refused (exit 5)
 python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
   --registry <path> --lock-path <lock> \
-  confirm --slug <slug> --propose <propose-id> \
+  confirm --slug <slug> --propose <propose-ref> \
   --lock-owner <owner> --session-id <id>
 
 # advance / record state; release a builder's lanes
@@ -207,9 +235,12 @@ python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
   `proposed → assigned → in-progress → reported → landed | aborted`.
 - **Gates the registry enforces** (each refusal exits 5, like
   an illegal transition, and changes nothing):
-  - `confirm` without `--propose` is refused. The value is
-    the id of the builder's PROPOSE response, the
-    verify-before-implement step, and is stored as `propose`.
+  - `confirm` without `--propose` is refused. The value,
+    `<propose-ref>`, is the PROPOSE reference: the gitchat
+    envelope id of the builder's PROPOSE response (the
+    verify-before-implement step), or in a single session
+    the path of the file holding the finding. It is stored
+    as `propose`; any non-empty string is accepted.
   - `update --status landed` is refused while
     `run.blocking_gate` is set, and until the operator's
     `run-clear-gate human-review` has put `human-review` in
@@ -386,7 +417,7 @@ the operator's review — never just print the diff inline.
    conversation) after `confirm`; the builder builds on that
    build-go prompt and reports a terminal `response` to it.
    Two leader→builder prompts per lane: dispatch (verify)
-   then build-go. `confirm` requires `--propose <id>`, the
+   then build-go. `confirm` requires `--propose <propose-ref>`, the
    PROPOSE it rests on.
 6. **Builders fan out locally** (task-internal sub-agents,
    never a gitchat relay, never recursive, bounded to N

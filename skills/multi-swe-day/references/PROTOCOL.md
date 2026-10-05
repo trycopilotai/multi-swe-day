@@ -206,7 +206,7 @@ The builder does **not** build first.
    a `response`.
 3. The leader reads the finding through `msd_listen`, then
    either `confirm`s the lanes
-   (`msd_lane_registry confirm --slug <builder-slug> --propose <PROPOSE envelope id>`,
+   (`msd_lane_registry confirm --slug <builder-slug> --propose <propose-ref>`,
    `proposed → assigned`), re-routes (release + re-register
    a new lane set, which re-runs this gate), or aborts the
    day (a `release` at this stage: `update --status aborted`
