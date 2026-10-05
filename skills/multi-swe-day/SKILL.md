@@ -88,7 +88,8 @@ before the subcommand and `--lock-owner <owner> --session-id
 
 1. The operator approves the plan. No command records that;
    the approval is the instruction to go on.
-2. Acquire the lock (`swe_day_lock.py ... acquire`), then
+2. Acquire the lock with the full `swe_day_lock.py acquire`
+   form in `references/PROTOCOL.md` section 1, then
    `init --leader <slug>`.
 3. `register` each builder's lanes.
 4. Each builder sub-agent checks its lanes and writes its
@@ -109,9 +110,10 @@ before the subcommand and `--lock-owner <owner> --session-id
    operator instruction.
 
 `run-clear-gate` accepts only the gate the last
-`run-advance --gate` recorded (exit 5 otherwise), so there
-is no `run-clear-gate plan`. These are the only
-`run-advance` calls.
+`run-advance --gate` recorded, so there is no
+`run-clear-gate plan`: before any `run-advance` there is no
+`run` object and it exits 1; on any other gate it exits 5.
+These are the only `run-advance` calls.
 
 The numbered, decision-complete procedure lives in
 `references/PROTOCOL.md`; read it before acting. This file defines the
@@ -240,7 +242,8 @@ python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
     envelope id of the builder's PROPOSE response (the
     verify-before-implement step), or in a single session
     the path of the file holding the finding. It is stored
-    as `propose`; any non-empty string is accepted.
+    as `propose` with surrounding whitespace trimmed; any
+    value that is not empty or only whitespace is accepted.
   - `update --status landed` is refused while
     `run.blocking_gate` is set, and until the operator's
     `run-clear-gate human-review` has put `human-review` in

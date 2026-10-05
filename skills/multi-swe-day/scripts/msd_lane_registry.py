@@ -52,7 +52,8 @@ Gates the registry enforces:
   - `confirm` needs `--propose <propose-ref>`, the PROPOSE reference:
     the envelope id of the builder's PROPOSE (the verify-before-implement
     reply), or in a single session the path of the file holding the
-    finding. Any non-empty string is accepted; it is stored as `propose`.
+    finding. Any value that is not empty or only whitespace is accepted;
+    it is stored, trimmed, as `propose`.
   - `update --status landed` is refused while `run.blocking_gate` is
     set, and until `human-review` is in `run.cleared_gates`.
   Both refusals exit 5, like an illegal transition.

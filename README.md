@@ -51,8 +51,9 @@ registry does and does not check.
   stop at each human gate, or leave pushing to the operator
   has not been measured. The registry records lanes; no
   program checks which files a builder edits. The registry
-  refuses `confirm` without a `--propose` value (any
-  non-empty string; it does not look the PROPOSE up) and refuses
+  refuses `confirm` without a `--propose` value (anything
+  but empty or whitespace; it does not look the PROPOSE up)
+  and refuses
   to mark a lane `landed` until the `human-review` gate has
   been recorded and cleared, but it cannot tell whether the
   operator or an agent ran `run-clear-gate`, and no program
@@ -174,7 +175,7 @@ fails.
 
 ```sh
 set -eu
-release=v0.1.3
+release=v0.1.4
 install_target="$HOME/.claude/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
@@ -211,7 +212,7 @@ the block above is `install_target`.
 
 ```sh
 set -eu
-release=v0.1.3
+release=v0.1.4
 install_target="$HOME/.agents/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"

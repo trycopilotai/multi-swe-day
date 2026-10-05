@@ -36,7 +36,7 @@ private channel.
   that changes the registry while stating an owner other
   than the one in the metadata, or a session id other than a
   non-empty one the metadata records. So is a `confirm`
-  it accepts with no `--propose` value, or an
+  it accepts with no `--propose` value or only whitespace, or an
   `update --status landed` it accepts while `run.blocking_gate`
   is set or before `run-clear-gate human-review` was
   recorded.
@@ -148,8 +148,8 @@ can fail.
   derived a human phase. The registry refuses
   `update --status landed` while a gate is pending or until
   `human-review` has been cleared, and refuses `confirm`
-  without `--propose`, but `--propose` is any non-empty
-  string and the program cannot tell an operator from an
+  without `--propose`, but `--propose` is any string that
+  is not empty or only whitespace (stored trimmed), and the program cannot tell an operator from an
   agent: whoever holds the lock can run `run-clear-gate`.
   No program gates the push; the skill text is what tells
   an agent to stop at `land-approval` and `push`.

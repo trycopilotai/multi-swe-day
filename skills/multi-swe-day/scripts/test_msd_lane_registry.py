@@ -310,6 +310,22 @@ class LaneRegistryTest(unittest.TestCase):
         self.assertEqual(record["status"], "assigned")
         self.assertEqual(record["propose"], "msg-0001")
 
+    def test_whitespace_propose_is_refused_and_value_is_trimmed(self) -> None:
+        # The docs say: not empty or only whitespace, stored trimmed.
+        self.seed_builder("b1", "builder-01", ["src/x"])
+        self.assertEqual(
+            self.run_cmd(self.base_args("confirm", slug="b1", propose="  ")),
+            5,
+        )
+        self.assertEqual(
+            self.run_cmd(
+                self.base_args("confirm", slug="b1", propose=" run/b1.md ")
+            ),
+            0,
+        )
+        record = reg.read_registry(self.registry)["followers"]["b1"]
+        self.assertEqual(record["propose"], "run/b1.md")
+
     def test_landed_refused_when_review_never_recorded(self) -> None:
         self.seed_builder("b1", "builder-01", ["src/x"])
         self.drive_to_reported("b1")
@@ -669,8 +685,12 @@ class LaneRegistryTest(unittest.TestCase):
             ("run-advance", "--phase", "human-review", "--owner",
              "human", "--gate", "human-review"),
         ]
-        for step in steps:
+        # Right after init there is no run object to clear a gate on.
+        self.assertEqual(run(*steps[0]), 0)
+        self.assertEqual(run("run-clear-gate", "plan"), 1)
+        for step in steps[1:]:
             self.assertEqual(run(*step), 0, step)
+        # Once a gate is recorded, any other gate is a mismatch.
         self.assertEqual(run("run-clear-gate", "plan"), 5)
         self.assertEqual(
             run("update", "--slug", "b1", "--status", "landed"), 5
