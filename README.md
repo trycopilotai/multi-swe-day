@@ -98,7 +98,8 @@ pinned.
   is already running, with a lock held and work in flight,
   onto this skill, and they read that way.
 - [`skills/multi-swe-day/scripts/msd_lane_registry.py`](skills/multi-swe-day/scripts/msd_lane_registry.py)
-  keeps the registry file: `init`, `register`, `confirm`,
+  keeps the registry file: `init` (also accepted as
+  `adopt`, an alias of `init`), `register`, `confirm`,
   `update`, `release`, `status`, `run-advance` and
   `run-clear-gate`.
 - [`skills/multi-swe-day/scripts/msd_listen.py`](skills/multi-swe-day/scripts/msd_listen.py)
@@ -165,7 +166,7 @@ fails.
 
 ```sh
 set -eu
-release=v0.1.0
+release=v0.1.1
 install_target="$HOME/.claude/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
@@ -202,7 +203,7 @@ the block above is `install_target`.
 
 ```sh
 set -eu
-release=v0.1.0
+release=v0.1.1
 install_target="$HOME/.agents/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"

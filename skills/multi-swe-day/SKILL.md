@@ -37,11 +37,42 @@ skill:
 
 - **gitchat** (`github.com/trycopilotai/gitchat`) — message
   transport (send / server / inbox / tail) over git
-  branches.
+  branches. Its scripts, such as `gitchat_send.py` and
+  `gitchat_poll.py`, are in `<gitchat-skill-dir>/scripts/`.
 - **swe_day_lock.py** (`github.com/trycopilotai/swe-day`) — the
-  single-writer mutation lock for the operational repo.
+  single-writer mutation lock for the operational repo, at
+  `<swe-day-skill-dir>/scripts/swe_day_lock.py`.
 - **swe-day** (`github.com/trycopilotai/swe-day`) — the DXX
   milestone discipline and plan / validate / land gates.
+
+**Finding the scripts.** Commands here and in
+`references/PROTOCOL.md` name scripts through three
+placeholders. Each stands for the directory that holds that
+skill's `SKILL.md`:
+
+- `<multi-swe-day-skill-dir>` — this skill; its own scripts
+  are `<multi-swe-day-skill-dir>/scripts/msd_*.py`.
+- `<gitchat-skill-dir>` — the installed gitchat skill.
+- `<swe-day-skill-dir>` — the installed swe-day skill.
+
+Resolve each to an absolute path before running a command;
+commands run from the operational repo, not from a skill
+directory, so a bare `scripts/...` path does not resolve.
+
+- **Claude Code:** loading a skill with the Skill tool prints
+  its base directory ("Base directory for this skill: ...").
+  Otherwise look for `<name>/SKILL.md` in
+  `~/.claude/skills/`, in the project's `.claude/skills/`,
+  or in the `skills/` directory of an installed plugin.
+- **Codex:** the session's skill list gives the path of each
+  skill's `SKILL.md`; its directory is the skill directory.
+  Otherwise look in `~/.agents/skills/<name>/` or the
+  repo's `.agents/skills/<name>/`.
+
+`<name>` is `multi-swe-day`, `gitchat` or `swe-day`. If
+gitchat or swe-day is in none of those places, stop and ask
+the operator where it is installed; do not search the
+filesystem outside the operational repo for it.
 
 The numbered, decision-complete procedure lives in
 `references/PROTOCOL.md`; read it before acting. This file defines the
@@ -97,36 +128,64 @@ should be mutated only by the leader and only under the held
 lock.
 
 `scripts/msd_lane_registry.py` is the bundled
-helper (the analog of `swe_day_lock.py`):
+helper (the analog of `swe_day_lock.py`). `--registry` and
+`--lock-path` are options of the program, not of a
+subcommand: they go **before** the subcommand, and
+`--lock-owner` / `--session-id` go after it. A
+`--lock-path` placed after the subcommand is rejected
+(exit 2, "unrecognized arguments").
 
 ```
-# initialize an empty registry (idempotent)
-msd_lane_registry.py --registry <path> init --leader <slug>
+# initialize an empty registry (idempotent: an existing registry
+# is printed unchanged; creating a new one is lock-checked)
+python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+  --registry <path> --lock-path <lock> \
+  init --leader <slug> --lock-owner <owner> --session-id <id>
 
 # propose a disjoint lane set for one builder (status: proposed).
 # repeatable --lane; rejects absolute paths and any ".." component;
 # exits non-zero and names the conflict on overlap, incl. proposed.
-msd_lane_registry.py --registry <path> --lock-path <lock> \
+python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+  --registry <path> --lock-path <lock> \
   register --slug <slug> --role builder-NN --day DXX \
   --plan-path <path> --model <model> --effort <effort> \
   --lane <repo-relative-posix-path> [--lane ...] \
   --lock-owner <owner> --session-id <id>
 
 # confirm a proposed lane set (proposed -> assigned)
-msd_lane_registry.py --registry <path> --lock-path <lock> \
+python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+  --registry <path> --lock-path <lock> \
   confirm --slug <slug> --lock-owner <owner> --session-id <id>
 
 # advance / record state; release a builder's lanes
-msd_lane_registry.py --registry <path> --lock-path <lock> \
+python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+  --registry <path> --lock-path <lock> \
   update --slug <slug> --status <status> [--commit <sha>] \
   --lock-owner <owner> --session-id <id>
-msd_lane_registry.py --registry <path> --lock-path <lock> \
+python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+  --registry <path> --lock-path <lock> \
   release --slug <slug> --lock-owner <owner> --session-id <id>
 
+# record the run phase / park at a human gate (leader), and
+# clear a recorded human gate (operator)
+python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+  --registry <path> --lock-path <lock> \
+  run-advance --phase <phase> --owner agent|human \
+  [--gate <gate>] [--note <text>] \
+  --lock-owner <owner> --session-id <id>
+python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+  --registry <path> --lock-path <lock> \
+  run-clear-gate <gate> --lock-owner <owner> --session-id <id>
+
 # read the registry (no lock needed)
-msd_lane_registry.py --registry <path> status [--slug <slug>]
+python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+  --registry <path> status [--slug <slug>]
 ```
 
+- **Subcommands:** `init` (also accepted as `adopt`, an
+  alias of `init` with the same options and behaviour),
+  `register`, `confirm`, `update`, `release`, `status`,
+  `run-advance`, `run-clear-gate`.
 - **Schema:**
   `{schema_version, updated_at, leader, run:{phase, next_owner, blocking_gate, note, updated_at}, followers:{<slug>:{role, lanes[], day, plan_path, model, effort, status, commit, updated_at}}}`;
   `run` is optional.
@@ -166,17 +225,19 @@ both: `msd_listen` for builder reports and errors (it does
 not collect `ack` envelopes), and a `gitchat_poll` loop for **new
 prompts** (auditor proposals, operator messages). Mark a
 prompt seen with
-`gitchat_poll --slug <leader> --mark-seen <id>` only after
+`python3 <gitchat-skill-dir>/scripts/gitchat_poll.py --slug <leader> --mark-seen <id>` only after
 the leader has pushed its own terminal response to it.
 
 ```
 # surface unseen terminal responses/errors addressed to the leader
 # (a stream loop; add --once to print what is new and exit)
-msd_listen.py --slug <leader> [--repo .] [--remote origin]
+python3 <multi-swe-day-skill-dir>/scripts/msd_listen.py \
+  --slug <leader> [--repo .] [--remote origin]
 
 # record an envelope id as seen without printing it (a printed
 # envelope is already recorded unless --no-mark is passed)
-msd_listen.py --slug <leader> --mark-seen <envelope-id>
+python3 <multi-swe-day-skill-dir>/scripts/msd_listen.py \
+  --slug <leader> --mark-seen <envelope-id>
 ```
 
 Dispatch and reconciliation are **prose, not new scripts**:
@@ -216,7 +277,8 @@ action and stops — it does NOT offer any agent action behind
 the gate (for example, never suggest `reconcile` while
 `human-review` is unmet). A human gate the leader recorded
 with `run-advance --gate` clears only via the
-operator's `msd_lane_registry.py run-clear-gate <name>`;
+operator's `run-clear-gate <name>` (full form under "Lane
+registry" above);
 the leader then `run-advance`s to the next phase. The
 ordered phase model and exactly where the leader advances it
 live in `references/PROTOCOL.md` → "Run phase model" / "Active Run
@@ -230,7 +292,8 @@ diff (a worktree commit, a lane's changes) at the
 `git diff` + `open`:
 
 ```sh
-python3 .../msd_review_open.py --repo <worktree-or-repo> \
+python3 <multi-swe-day-skill-dir>/scripts/msd_review_open.py \
+  --repo <worktree-or-repo> \
   --range <base>..<head> [--skip-glob 'drizzle/meta/*' ...]
 ```
 
@@ -341,7 +404,9 @@ reads this file first and binds the host specifics:
 - the lock's exact `--repo` and `--lock-path` (bind them
   explicitly — the `swe_day_lock.py` default
   `.agents/locks/swe-day.lock` may differ from a host
-  wrapper's path; confirm via `swe_day_lock.py ... status`),
+  wrapper's path; confirm via
+  `<swe-day-skill-dir>/scripts/swe_day_lock.py --repo <repo>
+  --lock-path <lock> status`),
 - the gitchat scripts and remote,
 - which l8 wrapper the auditor reads.
 

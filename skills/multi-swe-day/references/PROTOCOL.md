@@ -26,7 +26,33 @@ described under Active Run mode):
 Everything else (dispatch, reconcile, fan-out) is prose that
 composes existing gitchat and lock helpers. The command
 sequences below are written out so a verifier can follow
-them; `...` and `<...>` stand for host bindings.
+them; `<...>` stands for a host binding.
+
+Scripts are named through the placeholders `SKILL.md`
+defines under "Finding the scripts":
+`<multi-swe-day-skill-dir>`, `<gitchat-skill-dir>` and
+`<swe-day-skill-dir>`, each the absolute path of the
+directory holding that skill's `SKILL.md`. Resolve them as
+`SKILL.md` says before running anything.
+
+A short form in prose, such as
+`msd_lane_registry confirm --slug <builder-slug>`, means the
+full command:
+
+```sh
+python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+  --registry <path> --lock-path <the held lock path> \
+  <subcommand> <its options> \
+  --lock-owner swe-day-leader --session-id <sid>
+```
+
+`--registry` and `--lock-path` belong to the program and go
+**before** the subcommand; after it they are rejected with
+exit 2. `--lock-owner` and `--session-id` belong to every
+mutating subcommand and go after it. Read-only `status`
+takes neither. `adopt` is an alias of `init`.
+Likewise `swe_day_lock.py ... status` means
+`python3 <swe-day-skill-dir>/scripts/swe_day_lock.py --repo <ops-repo> --lock-path <the held lock path> status`.
 
 ## 0. Vocabulary
 
@@ -56,7 +82,7 @@ Exactly one leader per run.
    bare defaults:
 
    ```sh
-   python3 .../swe_day_lock.py \
+   python3 <swe-day-skill-dir>/scripts/swe_day_lock.py \
      --repo <ops-repo> \
      --lock-path <the exact path the running lock uses> \
      acquire --owner swe-day-leader --work-item <run-id> \
@@ -71,10 +97,22 @@ Exactly one leader per run.
    adopt the existing lock rather than creating a second
    one.
 
-2. Inspect the registry: run `msd_lane_registry status`. If
-   the registry file is absent, `msd_lane_registry init`
-   (recording the leader owner). Never reset existing
-   builder rows on bring-up.
+2. Inspect the registry, then, if the registry file is
+   absent, initialize it (recording the leader owner). Pass
+   `--lock-path` before `init`, so creating the registry is
+   checked against the lock you just acquired:
+
+   ```sh
+   python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+     --registry <path> status
+   python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
+     --registry <path> --lock-path <the held lock path> \
+     init --leader swe-day-leader \
+     --lock-owner swe-day-leader --session-id <sid>
+   ```
+
+   `init` on an existing registry prints it and changes
+   nothing. Never reset existing builder rows on bring-up.
 
 3. Arm the two listeners, which read different things and
    must both run:
@@ -114,7 +152,7 @@ For each day handed out:
 3. Reserve the lanes:
 
    ```sh
-   python3 .../msd_lane_registry.py \
+   python3 <multi-swe-day-skill-dir>/scripts/msd_lane_registry.py \
      --registry <path> --lock-path <the held lock path> \
      register --slug <builder-slug> --role builder-NN \
      --day <DXX> --plan-path <path> --model <model> \
@@ -134,7 +172,7 @@ For each day handed out:
 4. Dispatch the work over gitchat:
 
    ```sh
-   python3 .../gitchat_send.py \
+   python3 <gitchat-skill-dir>/scripts/gitchat_send.py \
      --from swe-day-leader --to <builder-slug> \
      --tier <cheap|max> --want-model <model> --effort <effort> \
      --msg "<deliverable + the reserved lanes + plan path + \
@@ -182,7 +220,7 @@ The builder does **not** build first.
    dispatch** in a NEW conversation — to the builder slug:
 
    ```sh
-   python3 .../gitchat_send.py \
+   python3 <gitchat-skill-dir>/scripts/gitchat_send.py \
      --from swe-day-leader --to <builder-slug> \
      --tier <cheap|max> --want-model <model> --effort <effort> \
      --msg "build-go: lanes <reserved lanes> confirmed; build \
@@ -297,7 +335,7 @@ The auditor improves the skills and never implements.
    `msd_listen`.
 
    ```sh
-   python3 .../gitchat_send.py \
+   python3 <gitchat-skill-dir>/scripts/gitchat_send.py \
      --from <auditor-slug> --to swe-day-leader \
      --kind prompt \
      --msg-file <report-file>
@@ -376,7 +414,7 @@ next-action driver and emitting its banner as the first
 lines of the reply:
 
 ```sh
-python3 .../msd_next.py --registry <path> \
+python3 <multi-swe-day-skill-dir>/scripts/msd_next.py --registry <path> \
   --lock-path <the held lock path> render
 ```
 
@@ -433,7 +471,8 @@ review surface with `scripts/msd_review_open.py`, not
 a hand-rolled `git diff` + `open`:
 
 ```sh
-python3 .../msd_review_open.py --repo <worktree-or-repo> \
+python3 <multi-swe-day-skill-dir>/scripts/msd_review_open.py \
+  --repo <worktree-or-repo> \
   --range <base>..<head> [--skip-glob 'drizzle/meta/*' ...]
 ```
 
