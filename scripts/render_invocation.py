@@ -35,9 +35,25 @@ def cut(text: str) -> str:
     return text[:LIMIT] + " ...[%d more characters]" % (len(text) - LIMIT)
 
 
+# A character that can sit inside a path segment or a host name.
+NAME = r"[\w.~+-]"
+
+
 def prefix(path: str, replacement: str):
-    """Replace `path` only where it is a whole path prefix."""
-    pattern = re.compile(re.escape(path.rstrip("/")) + r"(?=/|\b|$)")
+    """Replace `path` only where it is a whole path prefix: not
+    preceded by a path or name character (so `/a/x` is not a match
+    inside `/b/a/x`) and followed by `/` or by a character that
+    cannot continue the last segment (so `/a/x` does not match
+    `/a/x2`, `/a/x-old` or `/a/x.bak`)."""
+    pattern = re.compile(
+        r"(?<![\w.~+/-])" + re.escape(path.rstrip("/")) + r"(?=/|(?!" + NAME + r"))"
+    )
+    return lambda text: pattern.sub(replacement, text)
+
+
+def whole_name(name: str, replacement: str):
+    """Replace a host name only where it is not part of a longer name."""
+    pattern = re.compile(r"(?<!" + NAME + r")" + re.escape(name) + r"(?![\w-]|\.\w)")
     return lambda text: pattern.sub(replacement, text)
 
 
@@ -54,8 +70,7 @@ def transforms(args):
     if args.home:
         steps.append(prefix(args.home, "~"))
     if args.hostname:
-        host = re.compile(re.escape(args.hostname))
-        steps.append(lambda text: host.sub("host", text))
+        steps.append(whole_name(args.hostname, "host"))
 
     def apply(text: str) -> str:
         for step in steps:

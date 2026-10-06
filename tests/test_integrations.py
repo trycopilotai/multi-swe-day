@@ -477,6 +477,21 @@ class RendererTest(unittest.TestCase):
         self.assertIn("    status: ok", text)
         self.assertTrue(text.endswith("## Final message\n\ndone\n"))
 
+    def test_a_root_inside_or_beside_another_path_is_left_alone(self) -> None:
+        text = self.render(
+            self.call(
+                "ls /x/iso /x/iso/a /p/x/iso/a /x/iso-old /x/iso.bak /x/iso2"
+                " a/x/iso h.example h.example.org sub.h.example"
+            ),
+            "--isolation-root", "/x/iso",
+            "--hostname", "h.example",
+        )
+        self.assertIn(
+            "command: ls /iso /iso/a /p/x/iso/a /x/iso-old /x/iso.bak /x/iso2"
+            " a/x/iso host h.example.org sub.h.example",
+            text,
+        )
+
     def test_a_cut_never_leaves_part_of_a_replaced_path(self) -> None:
         long_root = "/r/" + "d" * 400
         text = self.render(self.call("cd " + long_root + "/w"), "--capture-root", long_root)

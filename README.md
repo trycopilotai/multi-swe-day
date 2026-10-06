@@ -191,7 +191,7 @@ fails.
 
 ```sh
 set -eu
-release=v0.1.6
+release=v0.1.7
 install_target="$HOME/.claude/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
@@ -228,7 +228,7 @@ the block above is `install_target`.
 
 ```sh
 set -eu
-release=v0.1.6
+release=v0.1.7
 install_target="$HOME/.agents/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
