@@ -12,8 +12,11 @@ one, and the final message verbatim. Tool output is not rendered.
     python3 scripts/render_invocation.py codex RAW PROMPT \
         --last-message FILE --plugin-root DIR --capture-root DIR ...
 
-The only edits are the declared path transforms, applied to whole
-path prefixes in this order: replace-isolation-root (to /iso),
+The only edits are the declared path transforms. A root matches
+only when the character after it is `/`, whitespace, a quote, a
+backslash, `)` or end of text, and the character before it is
+whitespace, a quote, `=`, `(` or start of text. They apply in
+this order: replace-isolation-root (to /iso),
 replace-plugin-root (to /plugin),
 replace-scratch-root (to /scratch), replace-capture-root (to
 /work), replace-home (to ~) and replace-hostname (to host).
@@ -35,19 +38,23 @@ def cut(text: str) -> str:
     return text[:LIMIT] + " ...[%d more characters]" % (len(text) - LIMIT)
 
 
-# A character that can sit inside a path segment or a host name.
+# A root matches only when the character after it is `/`,
+# whitespace, a quote, a backslash, `)` or end of text, and the
+# character before it is whitespace, a quote, `=`, `(` or start
+# of text.
+AFTER = r"(?=[/\s\"'\\)]|\Z)"
+BEFORE = r"(?:(?<=[\s\"'=(])|\A)"
+
+# A character that can sit inside a host name.
 NAME = r"[\w.~+-]"
 
 
 def prefix(path: str, replacement: str):
-    """Replace `path` only where it is a whole path prefix: not
-    preceded by a path or name character (so `/a/x` is not a match
-    inside `/b/a/x`) and followed by `/` or by a character that
-    cannot continue the last segment (so `/a/x` does not match
-    `/a/x2`, `/a/x-old` or `/a/x.bak`)."""
-    pattern = re.compile(
-        r"(?<![\w.~+/-])" + re.escape(path.rstrip("/")) + r"(?=/|(?!" + NAME + r"))"
-    )
+    """Replace `path` where it is a root: only when the character
+    after it is `/`, whitespace, a quote, a backslash, `)` or end of
+    text, and the character before it is whitespace, a quote, `=`,
+    `(` or start of text."""
+    pattern = re.compile(BEFORE + re.escape(path.rstrip("/")) + AFTER)
     return lambda text: pattern.sub(replacement, text)
 
 

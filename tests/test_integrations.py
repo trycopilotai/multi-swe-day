@@ -481,14 +481,16 @@ class RendererTest(unittest.TestCase):
         text = self.render(
             self.call(
                 "ls /x/iso /x/iso/a /p/x/iso/a /x/iso-old /x/iso.bak /x/iso2"
-                " a/x/iso h.example h.example.org sub.h.example"
+                " a/x/iso /x/iso@old /p@/x/iso/a \"/x/iso\" (/x/iso) d=/x/iso\\n"
+                " h.example h.example.org sub.h.example"
             ),
             "--isolation-root", "/x/iso",
             "--hostname", "h.example",
         )
         self.assertIn(
             "command: ls /iso /iso/a /p/x/iso/a /x/iso-old /x/iso.bak /x/iso2"
-            " a/x/iso host h.example.org sub.h.example",
+            " a/x/iso /x/iso@old /p@/x/iso/a \"/iso\" (/iso) d=/iso\\n"
+            " host h.example.org sub.h.example",
             text,
         )
 

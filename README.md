@@ -191,7 +191,7 @@ fails.
 
 ```sh
 set -eu
-release=v0.1.7
+release=v0.1.8
 install_target="$HOME/.claude/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
@@ -228,7 +228,7 @@ the block above is `install_target`.
 
 ```sh
 set -eu
-release=v0.1.7
+release=v0.1.8
 install_target="$HOME/.agents/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
@@ -327,7 +327,11 @@ show the prompt, every tool call with its arguments cut at
 one, and the final message; tool output is left out. The
 only edits are path replacements, listed per run in the
 `invocations` list of `evidence/demo-manifest.json`, which
-also records each transcript's and raw output's SHA-256.
+also records each transcript's and raw output's SHA-256. A
+root matches only when the character after it is `/`,
+whitespace, a quote, a backslash, `)` or end of text, and the
+character before it is whitespace, a quote, `=`, `(` or start
+of text.
 An earlier Claude Code run that reached paths outside its
 fixture is recorded there with `"published": false`.
 
