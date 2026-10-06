@@ -38,5 +38,69 @@
     "edited": false,
     "transforms": [],
     "note": "scripts/record_session.py ran each command in its own bash -c with the first command, the function definition, in front of it; after each command returned it appended that command's line, the command's output, an echo line and an exit status line taken from the command's exit status; everything between is the programs' output, split into lines and joined again with newlines; no line was changed. The recorder refuses to write a transcript that contains the throwaway directory's path or the recording machine's hostname."
-  }
+  },
+  "invocations": [
+    {
+      "product": "Claude Code",
+      "version": "2.1.220",
+      "model": "claude-sonnet-5",
+      "invocation": "Use the /multi-swe-day skill to set up a two-lane network for the two work items in TODO.md in this repository. The operational repository is ./ops. Stay inside this directory: do not read or write anything outside it, do not add any remote other than the existing local origin remotes, and do not touch GitHub. Stop any server or listener process you start before you finish.",
+      "loaded_through": "--plugin-dir pointing at a fresh depth-1 clone of tag v0.1.5",
+      "fixture": "A synthetic Python repository (calc/ with add and shout, two unittest files, a Makefile check target) whose TODO.md lists two items, subtract(a, b) and whisper(s); a separate synthetic operational repository cloned at ./ops (git-ignored by the first) holding a README and plans/d01.md; each cloned from a local bare repository, its only remote. Only multi-swe-day was installed; gitchat and swe-day were not. The plugin clone and the fixture were the only things in a fresh temporary directory.",
+      "date": "2026-10-05",
+      "published": true,
+      "transcript": {
+        "path": "evidence/transcripts/2026-10-05-claude-code-invocation.txt",
+        "sha256": "cb8322d88986d83c47da1ed58d6c21506fa941e963cd3022c6999d2561b21c6c"
+      },
+      "raw_output_sha256": "fb71476636aed3152ee04cbf1b6e04f8e4314e6e81ae5dae51e0a399ff9ffb0f",
+      "transforms": [
+        "replace-isolation-root",
+        "replace-plugin-root",
+        "replace-capture-root",
+        "replace-home",
+        "replace-hostname"
+      ],
+      "invoked_the_skill": true,
+      "outcome": "Loaded the skill, then searched outside the operational repository (all of ~/.claude, the top two levels of /, and the directory holding the plugin and the fixture) before stopping at the preflight: it asked where swe-day is installed and changed nothing."
+    },
+    {
+      "product": "Codex",
+      "version": "0.146.0",
+      "model": "gpt-5.6-sol",
+      "model_note": "The codex exec --json stream does not name the model; this is the model in the client's own session record for the run.",
+      "invocation": "Use the $multi-swe-day skill to set up a two-lane network for the two work items in TODO.md in this repository. The operational repository is ./ops. Stay inside this directory: do not read or write anything outside it, do not add any remote other than the existing local origin remotes, and do not touch GitHub. Stop any server or listener process you start before you finish.",
+      "loaded_through": "a copy of skills/multi-swe-day/ committed at .agents/skills/multi-swe-day/ in the fixture",
+      "fixture": "A synthetic Python repository (calc/ with add and shout, two unittest files, a Makefile check target) whose TODO.md lists two items, subtract(a, b) and whisper(s); a separate synthetic operational repository cloned at ./ops (git-ignored by the first) holding a README and plans/d01.md; each cloned from a local bare repository, its only remote. Only multi-swe-day was installed; gitchat and swe-day were not.",
+      "date": "2026-10-05",
+      "published": true,
+      "transcript": {
+        "path": "evidence/transcripts/2026-10-05-codex-invocation.txt",
+        "sha256": "2ef69a7d7ec3c206462017d3f62698d8a2f8f2b628fc420b94c0c12ec5eeb7d4"
+      },
+      "raw_output_sha256": "17f8039b2f6adf4e962175fe4647c1ee139cd940f90ad4b6a316fbfa535a28c2",
+      "transforms": [
+        "replace-plugin-root",
+        "replace-capture-root",
+        "replace-home",
+        "replace-hostname"
+      ],
+      "invoked_the_skill": true,
+      "outcome": "Read the skill and stopped at the preflight without searching outside the workspace, naming the missing swe-day skill and swe_day_lock.py; it changed nothing."
+    },
+    {
+      "product": "Claude Code",
+      "version": "2.1.220",
+      "model": "claude-sonnet-5",
+      "invocation": "Use the /multi-swe-day skill to set up a two-lane network for the two work items in TODO.md in this repository. The operational repository is ./ops. Stay inside this directory: do not read or write anything outside it, do not add any remote other than the existing local origin remotes, and do not touch GitHub. Stop any server or listener process you start before you finish.",
+      "loaded_through": "--plugin-dir pointing at a local clone of tag v0.1.5 that had sibling checkouts of other skills beside it",
+      "fixture": "A synthetic Python repository (calc/ with add and shout, two unittest files, a Makefile check target) whose TODO.md lists two items, subtract(a, b) and whisper(s); a separate synthetic operational repository cloned at ./ops (git-ignored by the first) holding a README and plans/d01.md; each cloned from a local bare repository, its only remote. Only multi-swe-day was installed; gitchat and swe-day were not.",
+      "date": "2026-10-05",
+      "published": false,
+      "published_note": "Its tool calls touch paths outside the fixture, the plugin directory and the client scratch directory, so it was re-run in isolation; no transcript is committed.",
+      "raw_output_sha256": "ee65110cf77b2f53c4acab301d90868b11ece8c7fa3c15fbde4623fb7faf1364",
+      "invoked_the_skill": true,
+      "outcome": "Searched outside the operational repository, used an uninstalled swe-day checkout it found nearby, set up the lock and two lanes, built both items in worktrees, and parked at human review without merging or pushing."
+    }
+  ]
 }

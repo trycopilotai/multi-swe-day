@@ -34,6 +34,8 @@ SKILL = PACKAGE / "SKILL.md"
 README = ROOT / "README.md"
 TRANSCRIPT = ROOT / "evidence" / "transcripts" / "registry-session.txt"
 MANIFEST = ROOT / "evidence" / "demo-manifest.json"
+INVOCATIONS = ROOT / "evidence" / "transcripts"
+RENDERER = ROOT / "scripts" / "render_invocation.py"
 CLAIM = "The lane registry refuses overlapping lanes."
 REFUSAL = "lane conflict: 'src' overlaps 'src/auth' held by 'builder-a'"
 REPOSITORY = "https://github.com/trycopilotai/" + NAME
@@ -368,6 +370,120 @@ class EvidenceTest(unittest.TestCase):
         text = read(TRANSCRIPT)
         for marker in ("/var/folders", "/tmp", "/Users/", "/home/", "hostname"):
             self.assertNotIn(marker, text)
+
+
+class InvocationTest(unittest.TestCase):
+    def published(self) -> list:
+        record = json.loads(read(MANIFEST))
+        return [item for item in record["invocations"] if item["published"]]
+
+    def test_each_client_has_one_published_run(self) -> None:
+        self.assertEqual(
+            sorted(item["product"] for item in self.published()),
+            ["Claude Code", "Codex"],
+        )
+
+    def test_transcript_set_is_the_published_runs(self) -> None:
+        on_disk = sorted(
+            str(path.relative_to(ROOT))
+            for path in INVOCATIONS.glob("*-invocation.txt")
+        )
+        listed = sorted(item["transcript"]["path"] for item in self.published())
+        self.assertEqual(on_disk, listed)
+
+    def test_transcript_hashes_match_the_manifest(self) -> None:
+        for item in self.published():
+            path = ROOT / item["transcript"]["path"]
+            self.assertEqual(item["transcript"]["sha256"], sha256(path), path)
+            self.assertRegex(item["raw_output_sha256"], r"^[0-9a-f]{64}$")
+
+    def test_every_run_invoked_the_skill_and_says_how_it_ended(self) -> None:
+        record = json.loads(read(MANIFEST))
+        for item in record["invocations"]:
+            self.assertIs(item["invoked_the_skill"], True)
+            self.assertTrue(item["outcome"])
+            self.assertRegex(item["raw_output_sha256"], r"^[0-9a-f]{64}$")
+            if not item["published"]:
+                self.assertNotIn("transcript", item)
+
+    def test_declared_transforms_are_known(self) -> None:
+        known = {
+            "replace-isolation-root",
+            "replace-plugin-root",
+            "replace-scratch-root",
+            "replace-capture-root",
+            "replace-home",
+            "replace-hostname",
+        }
+        for item in self.published():
+            self.assertTrue(set(item["transforms"]) <= known, item["transforms"])
+
+    def test_transcripts_show_the_skill_being_loaded(self) -> None:
+        for item in self.published():
+            text = read(ROOT / item["transcript"]["path"])
+            if item["product"] == "Claude Code":
+                self.assertIn("] Skill\n    skill: multi-swe-day:multi-swe-day", text)
+            else:
+                self.assertIn(".agents/skills/multi-swe-day/SKILL.md", text)
+            self.assertIn(item["invocation"], text)
+
+    def test_transcripts_name_no_machine(self) -> None:
+        for path in INVOCATIONS.glob("*-invocation.txt"):
+            text = read(path)
+            for marker in ("/var/folders", "/private/", "/Users/", "/home/", "/tmp/claude-"):
+                self.assertNotIn(marker, text, path)
+
+    def test_readme_links_both_transcripts(self) -> None:
+        text = read(README)
+        for item in self.published():
+            self.assertIn("](" + item["transcript"]["path"] + ")", text)
+
+
+class RendererTest(unittest.TestCase):
+    def render(self, events, *options) -> str:
+        with tempfile.TemporaryDirectory() as raw:
+            stream = os.path.join(raw, "out.jsonl")
+            prompt = os.path.join(raw, "prompt.txt")
+            with open(stream, "w", encoding="utf-8") as handle:
+                handle.write("\n".join(json.dumps(event) for event in events) + "\n")
+            with open(prompt, "w", encoding="utf-8") as handle:
+                handle.write("Use the /multi-swe-day skill.\n")
+            done = subprocess.run(
+                [sys.executable, "-B", str(RENDERER), "claude-code", stream, prompt]
+                + list(options),
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        return done.stdout
+
+    def call(self, command: str) -> list:
+        use = {"type": "tool_use", "id": "t1", "name": "Bash", "input": {"command": command}}
+        result = {"type": "tool_result", "tool_use_id": "t1", "is_error": False}
+        return [
+            {"type": "assistant", "message": {"content": [use]}},
+            {"type": "user", "message": {"content": [result]}},
+            {"type": "result", "subtype": "success", "result": "done"},
+        ]
+
+    def test_roots_are_replaced_whole_and_in_order(self) -> None:
+        text = self.render(
+            self.call("ls /x/iso/plugin /x/iso/work/f /x/iso2 /h/u/a"),
+            "--isolation-root", "/x/iso",
+            "--plugin-root", "/x/iso/plugin",
+            "--home", "/h/u",
+        )
+        self.assertIn("command: ls /iso/plugin /iso/work/f /x/iso2 ~/a", text)
+        self.assertIn("    status: ok", text)
+        self.assertTrue(text.endswith("## Final message\n\ndone\n"))
+
+    def test_a_cut_never_leaves_part_of_a_replaced_path(self) -> None:
+        long_root = "/r/" + "d" * 400
+        text = self.render(self.call("cd " + long_root + "/w"), "--capture-root", long_root)
+        self.assertIn("command: cd /work/w", text)
+        self.assertNotIn("/r/d", text)
+        cut = self.render(self.call("x" * 301))
+        self.assertIn("x" * 300 + " ...[1 more characters]", cut)
 
 
 class DemoTest(unittest.TestCase):

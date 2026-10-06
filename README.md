@@ -45,8 +45,10 @@ registry does and does not check.
 **Not measured, stated up front.**
 
 - No agent ran a multi-swe-day network to produce the
-  evidence here. The transcript shows only the registry and
-  the banner, run from a shell.
+  evidence here. The registry transcript shows only the
+  registry and the banner, run from a shell; both agent
+  transcripts (under "Agent invocations" below) stop at the
+  preflight.
 - Whether agents that follow `SKILL.md` keep to their lanes,
   stop at each human gate, or leave pushing to the operator
   has not been measured. The registry records lanes; no
@@ -63,8 +65,9 @@ registry does and does not check.
 - No test or recording here runs the programs against a
   gitchat or a swe-day release. The tests write their own
   message fixtures and their own lock metadata file.
-- Neither Claude Code nor Codex was started to confirm that
-  the invocation names below resolve.
+- Neither install block below was run under a client. The
+  agent runs loaded the skill through `--plugin-dir` (Claude
+  Code) and through a copy committed in the fixture (Codex).
 
 ## It needs gitchat and swe-day
 
@@ -156,6 +159,19 @@ operational repo, the private operational repo, the private
 repo, or `ops-repo`; these all mean the same thing, and
 "private state" means what is kept there.
 
+## Known limits
+
+Under Claude Code, with swe-day not installed, the agent
+searched outside the operational repository (all of
+`~/.claude`, the top two levels of `/`, and the directory
+holding the plugin and the fixture) before it stopped at the
+preflight, although the skill says not to. In an earlier run
+where a swe-day checkout was reachable on disk, it used that
+checkout, set up the lock and two lanes, built both items,
+and parked at human review without merging or pushing.
+Codex stopped at the preflight without searching outside
+the fixture.
+
 ## Use it
 
 Read
@@ -175,7 +191,7 @@ fails.
 
 ```sh
 set -eu
-release=v0.1.5
+release=v0.1.6
 install_target="$HOME/.claude/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
@@ -212,7 +228,7 @@ the block above is `install_target`.
 
 ```sh
 set -eu
-release=v0.1.5
+release=v0.1.6
 install_target="$HOME/.agents/skills/multi-swe-day"
 install_parent="$(dirname "$install_target")"
 mkdir -p "$install_parent"
@@ -284,6 +300,36 @@ only the interpreter that made the recording.
 `make check` runs the programs' own tests and a packaging
 contract that ties this file, both plugin manifests, the
 transcript and the demo images to each other.
+
+### Agent invocations
+
+Each client was given the same prompt (only `/multi-swe-day`
+or `$multi-swe-day` differs) on one synthetic fixture: a
+small Python repository with two work items in `TODO.md`
+and a separate operational repository at `./ops`. Only
+multi-swe-day was installed. This is one run per client,
+not a benchmark.
+
+- [`evidence/transcripts/2026-10-05-claude-code-invocation.txt`](evidence/transcripts/2026-10-05-claude-code-invocation.txt):
+  Claude Code 2.1.220 loaded the skill with the `Skill`
+  tool, searched outside the operational repository for
+  swe-day, then stopped at the preflight and asked where
+  swe-day is installed. It changed nothing.
+- [`evidence/transcripts/2026-10-05-codex-invocation.txt`](evidence/transcripts/2026-10-05-codex-invocation.txt):
+  Codex 0.146.0 read the skill and stopped at the preflight,
+  naming the missing swe-day skill and `swe_day_lock.py`,
+  without searching outside the fixture. It changed nothing.
+
+`scripts/render_invocation.py` rendered both from the
+clients' raw output, which is not committed. The transcripts
+show the prompt, every tool call with its arguments cut at
+300 characters, each call's status where the output gives
+one, and the final message; tool output is left out. The
+only edits are path replacements, listed per run in the
+`invocations` list of `evidence/demo-manifest.json`, which
+also records each transcript's and raw output's SHA-256.
+An earlier Claude Code run that reached paths outside its
+fixture is recorded there with `"published": false`.
 
 ## Contributing
 
