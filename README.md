@@ -37,8 +37,8 @@ new lane with the lanes of every other builder in the
 registry file and refuses an exact match, an ancestor or a
 descendant, with exit status 4. Among the things `register`
 does not refuse: a builder whose status is `aborted` does
-not block, and registering a slug again replaces that
-slug's own row. A `landed` builder's lanes still block.
+not block, and registering a slug again replaces that slug's
+own row. A `landed` builder's lanes still block.
 [`SECURITY.md`](SECURITY.md) has the fuller list of what the
 registry does and does not check.
 
@@ -55,11 +55,10 @@ registry does and does not check.
   program checks which files a builder edits. The registry
   refuses `confirm` without a `--propose` value (anything
   but empty or whitespace; it does not look the PROPOSE up)
-  and refuses
-  to mark a lane `landed` until the `human-review` gate has
-  been recorded and cleared, but it cannot tell whether the
-  operator or an agent ran `run-clear-gate`, and no program
-  stops a push.
+  and refuses to mark a lane `landed` until the
+  `human-review` gate has been recorded and cleared, but it
+  cannot tell whether the operator or an agent ran
+  `run-clear-gate`, and no program stops a push.
 - The recorded session passes no `--lock-path`, so the
   registry's lock check does not run in it.
 - No test or recording here runs the programs against a
@@ -77,12 +76,12 @@ needs both; a single session (the "Single session" note in
 
 - **gitchat is required across chats.** Every message
   between chats is a gitchat envelope, and `msd_listen.py`
-  reads gitchat's outbox branches. The skill text names gitchat's
-  `gitchat_send.py` and `gitchat_poll.py`. gitchat is the
-  sibling repository `trycopilotai/gitchat`. Read its own
-  security notes before you give anyone push access to the
-  remote it uses: `msd_listen.py` prints any `response` or
-  `error` message on that remote that is addressed to the
+  reads gitchat's outbox branches. The skill text names
+  gitchat's `gitchat_send.py` and `gitchat_poll.py`. gitchat
+  is the sibling repository `trycopilotai/gitchat`. Read its
+  own security notes before you give anyone push access to
+  the remote it uses: `msd_listen.py` prints any `response`
+  or `error` message on that remote that is addressed to the
   leader's slug.
 - **swe-day supplies the lock.** The leader holds the lock
   that `swe_day_lock.py` manages. It is in the sibling
@@ -110,10 +109,9 @@ pinned.
   is already running, with a lock held and work in flight,
   onto this skill, and they read that way.
 - [`skills/multi-swe-day/scripts/msd_lane_registry.py`](skills/multi-swe-day/scripts/msd_lane_registry.py)
-  keeps the registry file: `init` (also accepted as
-  `adopt`, an alias of `init`), `register`, `confirm`,
-  `update`, `release`, `status`, `run-advance` and
-  `run-clear-gate`.
+  keeps the registry file: `init` (also accepted as `adopt`,
+  an alias of `init`), `register`, `confirm`, `update`,
+  `release`, `status`, `run-advance` and `run-clear-gate`.
 - [`skills/multi-swe-day/scripts/msd_listen.py`](skills/multi-swe-day/scripts/msd_listen.py)
   prints `response` and `error` envelopes addressed to one
   slug and records the ids it printed.
@@ -124,8 +122,8 @@ pinned.
   `git diff --name-only` lists, except paths matched by
   `--skip-glob`, and a checklist. Two paths whose names
   differ only by `/` and `-` share one `.diff`, and the
-  later one overwrites the earlier. It then opens both in
-  VS Code on macOS. Pass `--no-open` on any other system:
+  later one overwrites the earlier. It then opens both in VS
+  Code on macOS. Pass `--no-open` on any other system:
   opening uses the macOS `open` and `osascript` commands.
 - Three test files sit beside the programs:
   `test_msd_lane_registry.py`, `test_msd_next.py` and
@@ -146,10 +144,10 @@ and what only the text asks of an agent.
   this repository; a wrapper binds one.
 - **The review extension.** `msd_review_open.py` writes two
   placeholder files for a companion VS Code review
-  extension, and the text
-  mentions an `address-comments` skill that reads the
-  comments it leaves. Neither ships here. Without them the
-  program still writes the diff files and the checklist.
+  extension, and the text mentions an `address-comments`
+  skill that reads the comments it leaves. Neither ships
+  here. Without them the program still writes the diff files
+  and the checklist.
 
 `swe-day-leader` and `swe-day-follower-0N` are the example
 slugs the text was written against, and `drizzle/meta` is
@@ -168,9 +166,9 @@ holding the plugin and the fixture) before it stopped at the
 preflight, although the skill says not to. In an earlier run
 where a swe-day checkout was reachable on disk, it used that
 checkout, set up the lock and two lanes, built both items,
-and parked at human review without merging or pushing.
-Codex stopped at the preflight without searching outside
-the fixture.
+and parked at human review without merging or pushing. Codex
+stopped at the preflight without searching outside the
+fixture.
 
 ## Use it
 
@@ -262,8 +260,8 @@ Each block works in a temporary `.multi-swe-day.*` directory
 beside the target and removes it on exit. An existing
 install at the target is replaced.
 
-Both blocks were run twice against a local copy of this
-tag with git 2.50.1. Each run printed, even with `--quiet`,
+Both blocks were run twice against a local copy of this tag
+with git 2.50.1. Each run printed, even with `--quiet`,
 git's warning that the tag "is not a commit" and its note
 about a detached `HEAD`. Both are expected for a clone
 pinned to an annotated tag; another git version may print
@@ -285,17 +283,17 @@ run behind the claim at the top of this file.
 `bash -c`, with the `reg` function definition in front of
 it, and wrote each `$` line and each exit status line
 itself; the rest is the two programs' output as captured,
-with no edit. The recorder writes nothing if the
-capture contains the throwaway directory's path or the
-recording machine's hostname. `evidence/demo-manifest.json`
-records the SHA-256 of both programs and of `SKILL.md`, the
+with no edit. The recorder writes nothing if the capture
+contains the throwaway directory's path or the recording
+machine's hostname. `evidence/demo-manifest.json` records
+the SHA-256 of both programs and of `SKILL.md`, the
 commands, the interpreter, the date, and the SHA-256 of the
 transcript.
 
-While this release was prepared, `make check` was run on
-one macOS machine with Python 3.9.6, 3.11.15 and 3.13.13;
-no other version or system was tried. The manifest records
-only the interpreter that made the recording.
+While this release was prepared, `make check` was run on one
+macOS machine with Python 3.9.6, 3.11.15 and 3.13.13; no
+other version or system was tried. The manifest records only
+the interpreter that made the recording.
 
 `make check` runs the programs' own tests and a packaging
 contract that ties this file, both plugin manifests, the
@@ -305,10 +303,10 @@ transcript and the demo images to each other.
 
 Each client was given the same prompt (only `/multi-swe-day`
 or `$multi-swe-day` differs) on one synthetic fixture: a
-small Python repository with two work items in `TODO.md`
-and a separate operational repository at `./ops`. Only
-multi-swe-day was installed. This is one run per client,
-not a benchmark.
+small Python repository with two work items in `TODO.md` and
+a separate operational repository at `./ops`. Only
+multi-swe-day was installed. This is one run per client, not
+a benchmark.
 
 - [`evidence/transcripts/2026-10-05-claude-code-invocation.txt`](evidence/transcripts/2026-10-05-claude-code-invocation.txt):
   Claude Code 2.1.220 loaded the skill with the `Skill`
@@ -329,11 +327,11 @@ only edits are path replacements, listed per run in the
 `invocations` list of `evidence/demo-manifest.json`, which
 also records each transcript's and raw output's SHA-256. A
 root matches only when the character after it is `/`,
-whitespace, a quote, a backslash, `)` or end of text, and the
-character before it is whitespace, a quote, `=`, `(` or start
-of text.
-An earlier Claude Code run that reached paths outside its
-fixture is recorded there with `"published": false`.
+whitespace, a quote, a backslash, `)` or end of text, and
+the character before it is whitespace, a quote, `=`, `(` or
+start of text. An earlier Claude Code run that reached paths
+outside its fixture is recorded there with
+`"published": false`.
 
 ## Contributing
 

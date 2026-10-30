@@ -49,9 +49,9 @@ make demo
 `make record` runs `scripts/record_session.py`. It replays
 the commands listed in the manifest in a throwaway
 directory, writes the transcript as captured, and rewrites
-the manifest's hashes, date and interpreter. It needs
-`bash` and `python3`. The transcript carries new timestamps
-each time, so it changes even when the programs did not.
+the manifest's hashes, date and interpreter. It needs `bash`
+and `python3`. The transcript carries new timestamps each
+time, so it changes even when the programs did not.
 `make demo` rebuilds the two images from the transcript.
 `make assets` rebuilds the social preview and needs Chrome
 or Chromium; `make asset-check` does not.

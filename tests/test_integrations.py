@@ -385,8 +385,7 @@ class InvocationTest(unittest.TestCase):
 
     def test_transcript_set_is_the_published_runs(self) -> None:
         on_disk = sorted(
-            str(path.relative_to(ROOT))
-            for path in INVOCATIONS.glob("*-invocation.txt")
+            str(path.relative_to(ROOT)) for path in INVOCATIONS.glob("*-invocation.txt")
         )
         listed = sorted(item["transcript"]["path"] for item in self.published())
         self.assertEqual(on_disk, listed)
@@ -430,7 +429,13 @@ class InvocationTest(unittest.TestCase):
     def test_transcripts_name_no_machine(self) -> None:
         for path in INVOCATIONS.glob("*-invocation.txt"):
             text = read(path)
-            for marker in ("/var/folders", "/private/", "/Users/", "/home/", "/tmp/claude-"):
+            for marker in (
+                "/var/folders",
+                "/private/",
+                "/Users/",
+                "/home/",
+                "/tmp/claude-",
+            ):
                 self.assertNotIn(marker, text, path)
 
     def test_readme_links_both_transcripts(self) -> None:
@@ -458,7 +463,12 @@ class RendererTest(unittest.TestCase):
         return done.stdout
 
     def call(self, command: str) -> list:
-        use = {"type": "tool_use", "id": "t1", "name": "Bash", "input": {"command": command}}
+        use = {
+            "type": "tool_use",
+            "id": "t1",
+            "name": "Bash",
+            "input": {"command": command},
+        }
         result = {"type": "tool_result", "tool_use_id": "t1", "is_error": False}
         return [
             {"type": "assistant", "message": {"content": [use]}},
@@ -469,9 +479,12 @@ class RendererTest(unittest.TestCase):
     def test_roots_are_replaced_whole_and_in_order(self) -> None:
         text = self.render(
             self.call("ls /x/iso/plugin /x/iso/work/f /x/iso2 /h/u/a"),
-            "--isolation-root", "/x/iso",
-            "--plugin-root", "/x/iso/plugin",
-            "--home", "/h/u",
+            "--isolation-root",
+            "/x/iso",
+            "--plugin-root",
+            "/x/iso/plugin",
+            "--home",
+            "/h/u",
         )
         self.assertIn("command: ls /iso/plugin /iso/work/f /x/iso2 ~/a", text)
         self.assertIn("    status: ok", text)
@@ -481,22 +494,26 @@ class RendererTest(unittest.TestCase):
         text = self.render(
             self.call(
                 "ls /x/iso /x/iso/a /p/x/iso/a /x/iso-old /x/iso.bak /x/iso2"
-                " a/x/iso /x/iso@old /p@/x/iso/a \"/x/iso\" (/x/iso) d=/x/iso\\n"
+                ' a/x/iso /x/iso@old /p@/x/iso/a "/x/iso" (/x/iso) d=/x/iso\\n'
                 " h.example h.example.org sub.h.example"
             ),
-            "--isolation-root", "/x/iso",
-            "--hostname", "h.example",
+            "--isolation-root",
+            "/x/iso",
+            "--hostname",
+            "h.example",
         )
         self.assertIn(
             "command: ls /iso /iso/a /p/x/iso/a /x/iso-old /x/iso.bak /x/iso2"
-            " a/x/iso /x/iso@old /p@/x/iso/a \"/iso\" (/iso) d=/iso\\n"
+            ' a/x/iso /x/iso@old /p@/x/iso/a "/iso" (/iso) d=/iso\\n'
             " host h.example.org sub.h.example",
             text,
         )
 
     def test_a_cut_never_leaves_part_of_a_replaced_path(self) -> None:
         long_root = "/r/" + "d" * 400
-        text = self.render(self.call("cd " + long_root + "/w"), "--capture-root", long_root)
+        text = self.render(
+            self.call("cd " + long_root + "/w"), "--capture-root", long_root
+        )
         self.assertIn("command: cd /work/w", text)
         self.assertNotIn("/r/d", text)
         cut = self.render(self.call("x" * 301))
