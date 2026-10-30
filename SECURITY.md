@@ -35,28 +35,28 @@ private channel.
   valid report. So is a call with a non-empty `--lock-path`
   that changes the registry while stating an owner other
   than the one in the metadata, or a session id other than a
-  non-empty one the metadata records. So is a `confirm`
-  it accepts with no `--propose` value or only whitespace, or an
-  `update --status landed` it accepts while `run.blocking_gate`
-  is set or before `run-clear-gate human-review` was
-  recorded.
-- **The listener.** `skills/multi-swe-day/scripts/msd_listen.py`
-  runs `git fetch`, `git for-each-ref`, `git ls-tree` and
-  `git show` in `--repo`, prints envelopes as JSON lines, and
-  writes one seen-state file, through a `.tmp` file beside
-  it. The file's directory is `--repo` joined with
+  non-empty one the metadata records. So is a `confirm` it
+  accepts with no `--propose` value or only whitespace, or
+  an `update --status landed` it accepts while
+  `run.blocking_gate` is set or before
+  `run-clear-gate human-review` was recorded.
+- **The listener.**
+  `skills/multi-swe-day/scripts/msd_listen.py` runs
+  `git fetch`, `git for-each-ref`, `git ls-tree` and
+  `git show` in `--repo`, prints envelopes as JSON lines,
+  and writes one seen-state file, through a `.tmp` file
+  beside it. The file's directory is `--repo` joined with
   `--state-dir` after trailing slashes are removed, so a
   relative `--state-dir` without `..` lands inside `--repo`,
   one with `..` can leave it, one made only of slashes is
   treated as empty, and any other absolute one replaces
-  `--repo`. The directory is created when it is
-  missing. A message on the
-  remote that makes it write anywhere else is a valid
-  report.
+  `--repo`. The directory is created when it is missing. A
+  message on the remote that makes it write anywhere else is
+  a valid report.
 - **The banner.** `skills/multi-swe-day/scripts/msd_next.py`
   reads the registry file and, with `--lock-path`, the lock
-  metadata, and prints the banner: one line when nothing
-  is active, otherwise two to four. It writes no file.
+  metadata, and prints the banner: one line when nothing is
+  active, otherwise two to four. It writes no file.
 - **The review helper.**
   `skills/multi-swe-day/scripts/msd_review_open.py` runs
   `git diff` in `--repo`, writes `.diff` files, a checklist,
@@ -64,10 +64,10 @@ private channel.
   `--review-dir` or a new temporary directory, and, unless
   `--no-open` is passed, runs the macOS `open` command and
   then, unless `--no-position` is passed, `osascript`. A
-  changed-file name that makes it
-  write outside the review directory is a valid report.
-  The revisions given as `--range`, `--base` and `--head`
-  are the caller's: they are passed to `git diff` as given.
+  changed-file name that makes it write outside the review
+  directory is a valid report. The revisions given as
+  `--range`, `--base` and `--head` are the caller's: they
+  are passed to `git diff` as given.
 - **The install blocks.** The two README blocks run
   `mkdir -p`, `mktemp -d`, `git clone`, `cp`, `mv` and
   `rm -rf`, all inside one skills directory under `$HOME`. A
@@ -123,8 +123,8 @@ can fail.
 - **Malformed input ends in a traceback.** A registry file
   or lock metadata that is not valid JSON, or is JSON but
   not an object of the expected shape, and lock metadata
-  with a `schema_version` that is neither 1 nor null are
-  not handled.
+  with a `schema_version` that is neither 1 nor null are not
+  handled.
 - **Paths are the caller's.** A relative `--registry` or
   `--lock-path` is resolved against the current directory,
   not against a repository root.
@@ -148,11 +148,12 @@ can fail.
   derived a human phase. The registry refuses
   `update --status landed` while a gate is pending or until
   `human-review` has been cleared, and refuses `confirm`
-  without `--propose`, but `--propose` is any string that
-  is not empty or only whitespace (stored trimmed), and the program cannot tell an operator from an
-  agent: whoever holds the lock can run `run-clear-gate`.
-  No program gates the push; the skill text is what tells
-  an agent to stop at `land-approval` and `push`.
+  without `--propose`, but `--propose` is any string that is
+  not empty or only whitespace (stored trimmed), and the
+  program cannot tell an operator from an agent: whoever
+  holds the lock can run `run-clear-gate`. No program gates
+  the push; the skill text is what tells an agent to stop at
+  `land-approval` and `push`.
 - **`--owner` is stored, not used.** The banner takes OWNER
   from its own phase model and from a recorded blocking
   gate. `run-advance --phase build --owner human` renders
@@ -166,13 +167,14 @@ can fail.
   `human-review` with its gate when all lanes are reported;
   the derivation alone does not hold that gate.
 - **Other banner behaviour.** A note recorded with
-  `run-advance --note` is free text, printed as one line.
-  It replaces the banner's action text in an agent-owned
-  phase with no blocking gate; in a human-owned phase, or
-  while a gate blocks, it is printed on a `note:` line of
-  its own under the operator's action. A note that is only
+  `run-advance --note` is free text, printed as one line. It
+  replaces the banner's action text in an agent-owned phase
+  with no blocking gate; in a human-owned phase, or while a
+  gate blocks, it is printed on a `note:` line of its own
+  under the operator's action. A note that is only
   whitespace leaves the action text empty in an agent-owned
-  phase. A run whose rows are all `aborted` derives `plan`. After `run-clear-gate` on a recorded human phase the
+  phase. A run whose rows are all `aborted` derives `plan`.
+  After `run-clear-gate` on a recorded human phase the
   banner still says the gate is unmet until the leader runs
   `run-advance`. All lanes `landed` derives `done`, with
   nothing said about the push gate. A `run.phase` the model
@@ -188,25 +190,24 @@ can fail.
   remote whose `to` field is the given slug. The `from`
   field is not checked. Anyone who can push to that remote
   can put text in front of the leader.
-- **One bad file can stop it.** Each of these ends every
-  run with a traceback until the file is gone: a message
-  file that is not valid UTF-8; one whose JSON is valid but
-  is not an object; an object whose `id` is a non-empty
-  list or object, or whose `kind` is a list or an object;
-  and envelopes whose `created_at` or
-  `id` values are of mixed types, which fail in sorting. A
-  non-string `id` can also fail while the seen-state is
-  being saved, after printing, so the same envelopes print
-  again on every run. A file that is UTF-8 text but not JSON
-  is skipped.
-- **Some envelopes are never printed.** One with no `id`,
-  or an `id` that is empty, zero, false or null, is
-  dropped. When two files on different branches carry the
-  same `id`, only the first one read is considered, before
-  the `kind` and `to` checks. A file whose name git prints
-  quoted (non-ASCII bytes, for example) is skipped.
-- **Printing and recording are two steps.** Each envelope
-  is flushed to the output, and the ids of the batch are
+- **One bad file can stop it.** Each of these ends every run
+  with a traceback until the file is gone: a message file
+  that is not valid UTF-8; one whose JSON is valid but is
+  not an object; an object whose `id` is a non-empty list or
+  object, or whose `kind` is a list or an object; and
+  envelopes whose `created_at` or `id` values are of mixed
+  types, which fail in sorting. A non-string `id` can also
+  fail while the seen-state is being saved, after printing,
+  so the same envelopes print again on every run. A file
+  that is UTF-8 text but not JSON is skipped.
+- **Some envelopes are never printed.** One with no `id`, or
+  an `id` that is empty, zero, false or null, is dropped.
+  When two files on different branches carry the same `id`,
+  only the first one read is considered, before the `kind`
+  and `to` checks. A file whose name git prints quoted
+  (non-ASCII bytes, for example) is skipped.
+- **Printing and recording are two steps.** Each envelope is
+  flushed to the output, and the ids of the batch are
   recorded as seen after the batch is printed. A run killed
   between the two prints that batch again next time.
 - **The slug check is loose.** A slug that ends with one
@@ -218,10 +219,10 @@ can fail.
   `seen` is read as its characters or its keys, and other
   shapes (a top-level list, or `seen` that is null, a
   number, or a list holding lists or objects) end the run
-  with a traceback. `--all` and `--no-mark` repeat
-  envelopes by design; `--all` without `--no-mark` still
-  records the ids it prints. An empty `--mark-seen` value is
-  ignored and the stream loop starts.
+  with a traceback. `--all` and `--no-mark` repeat envelopes
+  by design; `--all` without `--no-mark` still records the
+  ids it prints. An empty `--mark-seen` value is ignored and
+  the stream loop starts.
 - **A failed `git fetch` is not reported.** The listener
   then reads the refs it already has.
 - **`--repo` is the top level.** With a `--repo` that is a
@@ -231,10 +232,10 @@ can fail.
 ### The review helper
 
 - **It is for macOS and one machine.** Opening uses `open`
-  and `osascript`. Window positioning moves the first two
-  VS Code windows it finds, without checking which they
-  are, and does nothing more when it finds none. The
-  temporary review directory is not removed.
+  and `osascript`. Window positioning moves the first two VS
+  Code windows it finds, without checking which they are,
+  and does nothing more when it finds none. The temporary
+  review directory is not removed.
 - **Not every change gets a faithful diff.** File names are
   read from `git diff --name-only` as git prints them. A
   name git quotes (non-ASCII bytes, quotes, control
@@ -244,10 +245,10 @@ can fail.
   whitespace of each diff is stripped. `a...b` is diffed as
   `a..b`. Each name is passed back to git as a pathspec, so
   a name with glob characters or pathspec magic can pull in
-  other files' changes or miss its own. A `--repo` that is
-  a subdirectory of the work tree gets empty or wrong
-  diffs; pass the top level. When every changed file is
-  skipped, the checklist says no file changed.
+  other files' changes or miss its own. A `--repo` that is a
+  subdirectory of the work tree gets empty or wrong diffs;
+  pass the top level. When every changed file is skipped,
+  the checklist says no file changed.
 - **The checklist names local paths.** `CHECKLIST.md`
   carries the absolute paths of the repository and of the
   review directory on the operator's machine.
@@ -259,15 +260,14 @@ can fail.
   earlier `.diff` files, and they are opened with the new
   ones.
 - **Revisions are not checked.** A `--range` or `--base`
-  value that starts with `-` is read by git as an option.
-  A malformed range, an unknown revision or any
-  other git failure, a flattened name too long for the file
-  system, and a diff that is not UTF-8 each end in a
-  traceback.
+  value that starts with `-` is read by git as an option. A
+  malformed range, an unknown revision or any other git
+  failure, a flattened name too long for the file system,
+  and a diff that is not UTF-8 each end in a traceback.
 
 ## What is out of scope
 
-gitchat, the swe-day lock, the review method and the
-editor extension the text names are separate projects. So
-are Claude Code, Codex and any other host. Report those to
-their own maintainers.
+gitchat, the swe-day lock, the review method and the editor
+extension the text names are separate projects. So are
+Claude Code, Codex and any other host. Report those to their
+own maintainers.
