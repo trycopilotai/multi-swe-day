@@ -6,6 +6,10 @@ gitchat. It ships four small programs: a lane registry, a
 listener for terminal reports, a next-action banner, and a
 builder for a diff review folder.
 
+[![auto-lint-pr](https://github.com/trycopilotai/multi-swe-day/actions/workflows/auto-lint-pr.yml/badge.svg)](https://github.com/trycopilotai/multi-swe-day/actions/workflows/auto-lint-pr.yml)
+[![check](https://github.com/trycopilotai/multi-swe-day/actions/workflows/check.yml/badge.svg)](https://github.com/trycopilotai/multi-swe-day/actions/workflows/check.yml)
+[![lint](https://github.com/trycopilotai/multi-swe-day/actions/workflows/lint.yml/badge.svg)](https://github.com/trycopilotai/multi-swe-day/actions/workflows/lint.yml)
+
 The lane registry refuses overlapping lanes.
 
 <picture>
