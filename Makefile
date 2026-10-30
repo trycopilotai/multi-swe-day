@@ -9,6 +9,7 @@ check:
 	@$(PYTHON) $(SCRIPTS)/msd_listen_test.py
 	@$(PYTHON) $(SCRIPTS)/msd_review_open.py --self-test
 	@$(PYTHON) tests/test_integrations.py
+	@$(PYTHON) tests/test_readme_badges.py
 
 record:
 	@$(PYTHON) scripts/record_session.py
